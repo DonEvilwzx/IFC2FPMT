@@ -20,6 +20,7 @@ void FpmtWriter::addSect(int id,int b,int h)
 }
 bool FpmtWriter::emptySect()
 {
+	std::string s = "test";
 	return ssect_.empty();
 }
 void FpmtWriter::writeFpmt()

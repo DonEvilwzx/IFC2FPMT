@@ -83,6 +83,7 @@ void Translator::test1()
 	int buildingstoreyIndex = getIndex("IfcBuildingStorey");
 	int storeysCnt = entities_[buildingstoreyIndex]->instanceCnt;
 	wchar_t* s = getName(buildingstoreyIndex);
+	std::string ss = "test";
 
 }
 int Translator::getChildIndex(int parentIndex, std::string childname)

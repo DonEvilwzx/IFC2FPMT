@@ -59,9 +59,6 @@
     <ClCompile Include="FpmtWriter.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\IFC2FPMT\IFC2FPMT\Translator.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="IFC2FPMT.rc">

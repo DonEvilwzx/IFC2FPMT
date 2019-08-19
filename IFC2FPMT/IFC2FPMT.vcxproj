@@ -190,7 +190,6 @@
     <ClInclude Include="Translator.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\IFC2FPMT\IFC2FPMT\Translator.cpp" />
     <ClCompile Include="ChildView.cpp" />
     <ClCompile Include="FpmtWriter.cpp" />
     <ClCompile Include="IFC2FPMT.cpp" />

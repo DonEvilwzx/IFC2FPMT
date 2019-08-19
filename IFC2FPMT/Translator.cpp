@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Translator.h"
 #include <string>
+#include <set>
 #include <fstream>
 #include "ifcengine/include/engine.h"
 #include "ifcengine/include/ifcengine.h"
@@ -34,7 +35,7 @@ void Translator::translate()
 	int storeysCount = sdaiGetMemberCount(storeyAggr);							
 	int columnCount = sdaiGetMemberCount(columnAggr);
 	int beamCount = sdaiGetMemberCount(beamAggr);
-	std::vector<std::pair<double, double>> vsect;
+	std::set<std::vector<double>> vsect;
 	for (int i = 0; i < storeysCount; i++)
 	{
 		int storeyInstance;
@@ -57,34 +58,30 @@ void Translator::translate()
 				engiGetAggrElement(relatedelemAggr, k, sdaiINSTANCE, &relatedelemInstance);
 				floorElemInstanceTbl_[elevation].push_back(relatedelemInstance);
 				std::string elemtype = engiGetInstanceClassInfo(relatedelemInstance);
-				std::vector<double> coordinates = getCoordinates(relatedelemInstance);
-				std::pair<double,double> sect = getSect(relatedelemInstance,elemtype=="IfcBeam");
-				bool hassect = false;
-				for (int i = 0; i < vsect.size(); i++)
+				std::vector<double> sect;
+				if (elemtype == "IfcBeam")
 				{
-					if (vsect[i]==sect)
-					{
-						hassect = true;
-						break;
-					}
+					sect = getBeamRectSect(relatedelemInstance);
+					double beamcallength = getBeamCalcuLength(relatedelemInstance);
+					double beamrellength = getBeamRealLength(relatedelemInstance);
 				}
-				if (!hassect) {
-					vsect.push_back({ sect.first, sect.second });
-					fpmtwriter_.addSect(vsect.size(), sect.first, sect.second);
-				} 
+				else if (elemtype == "IfcColumn")
+					sect = getColumnRectSect(relatedelemInstance);
+				if (vsect.find(sect)==vsect.end())
+				{
+					vsect.insert(sect);
+					fpmtwriter_.addSect(vsect.size(), sect[0], sect[1]);
+				}
 			}
 		}
 	}
+	int a = 10;
+
 }
 
 void Translator::test1()
 {
-	initialSTRUCT_ENTITY();
-	int buildingstoreyIndex = getIndex("IfcBuildingStorey");
-	int storeysCnt = entities_[buildingstoreyIndex]->instanceCnt;
-	wchar_t* s = getName(buildingstoreyIndex);
-	std::string ss = "test";
-
+	translate();
 }
 int Translator::getChildIndex(int parentIndex, std::string childname)
 {
@@ -105,67 +102,97 @@ wchar_t* Translator::getName(int index)
 	engiGetEntityName(entities_[index]->ifcEntity, sdaiUNICODE, (char**)& ifcEntityName);
 	return ifcEntityName;
 }
-std::pair<double,double> Translator::getSect(int elemInstance, bool isbeam)
+std::vector<double> Translator::getBeamRectSect(int elemInstance)
 {
 	int repreInstance;
 	sdaiGetAttrBN(elemInstance, "Representation", sdaiINSTANCE, &repreInstance);
 	int* repreAggr;
 	sdaiGetAttrBN(repreInstance, "Representations", sdaiAGGR, &repreAggr);
-	int tempInstance;
-	if (isbeam)
-		engiGetAggrElement(repreAggr, 1, sdaiINSTANCE, &tempInstance);
-	else
-		engiGetAggrElement(repreAggr, 0, sdaiINSTANCE, &tempInstance);
-	int* itemsAggr = nullptr;
-	sdaiGetAttrBN(tempInstance, "Items", sdaiAGGR, &itemsAggr);
+	int shaperepInstance;
+	engiGetAggrElement(repreAggr, 1, sdaiINSTANCE, &shaperepInstance);
+	int* itemsAggr;
+	sdaiGetAttrBN(shaperepInstance, "Items", sdaiAGGR, &itemsAggr);
 	int itemInstance;
 	engiGetAggrElement(itemsAggr, 0, sdaiINSTANCE, &itemInstance);
-	std::pair<double,double> sect;
-	if (isbeam)
-	{
-		int areaInstance;
-		sdaiGetAttrBN(itemInstance, "SweptArea", sdaiINSTANCE, &areaInstance);
-		sdaiGetAttrBN(areaInstance, "YDim", sdaiREAL, &sect.first);
-		sdaiGetAttrBN(areaInstance, "XDim", sdaiREAL, &sect.second);
-	}
-	else
-	{
-		int msInstance;
-		sdaiGetAttrBN(itemInstance, "MappingSource", sdaiINSTANCE, &msInstance);
-		int mpInstance;
-		sdaiGetAttrBN(msInstance, "MappedRepresentation", sdaiINSTANCE, &mpInstance);
-		int* itemsAggr2 = nullptr;
-		sdaiGetAttrBN(mpInstance, "Items", sdaiAGGR, &itemsAggr2);
-		int itemInstance2;
-		engiGetAggrElement(itemsAggr2, 0, sdaiINSTANCE, &itemInstance2);
-		int areaInstance;
-		sdaiGetAttrBN(itemInstance2, "SweptArea", sdaiINSTANCE, &areaInstance);
-		sdaiGetAttrBN(areaInstance, "YDim", sdaiREAL, &sect.first);
-		sdaiGetAttrBN(areaInstance, "XDim", sdaiREAL, &sect.second);
-	}
-	sect.first = round(sect.first);
-	sect.second = round(sect.second);
+	std::vector<double> sect(2);
+	int areaInstance;
+	sdaiGetAttrBN(itemInstance, "SweptArea", sdaiINSTANCE, &areaInstance);
+	sdaiGetAttrBN(areaInstance, "YDim", sdaiREAL, &sect[0]);
+	sdaiGetAttrBN(areaInstance, "XDim", sdaiREAL, &sect[1]);
 	return sect;
 }
-
-std::vector<double> Translator::getCoordinates(int elemInstance)
+std::vector<double> Translator::getColumnRectSect(int elemInstance)
 {
-	int opInstance;
-	sdaiGetAttrBN(elemInstance, "ObjectPlacement", sdaiINSTANCE, &opInstance);
-	int rpInstance;
-	sdaiGetAttrBN(opInstance, "RelativePlacement", sdaiINSTANCE, &rpInstance);
-	int locInstance;
-	sdaiGetAttrBN(rpInstance, "Location", sdaiINSTANCE, &locInstance);
-	int* coordAggr;
-	sdaiGetAttrBN(locInstance, "Coordinates",sdaiAGGR,&coordAggr);
-	int dims = sdaiGetMemberCount(coordAggr);
-	std::vector<double> coordinates(3);
-	for (int i = 0; i < dims; i++)
-	{
-		engiGetAggrElement(coordAggr, i, sdaiREAL,&coordinates[i]);
-	}
-	return coordinates;
+	int repreInstance;
+	sdaiGetAttrBN(elemInstance, "Representation", sdaiINSTANCE, &repreInstance);
+	int* repreAggr;
+	sdaiGetAttrBN(repreInstance, "Representations", sdaiAGGR, &repreAggr);
+	int shaperepInstance;
+	engiGetAggrElement(repreAggr, 0, sdaiINSTANCE, &shaperepInstance);
+	int* itemsAggr = nullptr;
+	sdaiGetAttrBN(shaperepInstance, "Items", sdaiAGGR, &itemsAggr);
+	int itemInstance;
+	engiGetAggrElement(itemsAggr, 0, sdaiINSTANCE, &itemInstance);
+	std::vector<double> sect(2);
+	int msInstance;
+	sdaiGetAttrBN(itemInstance, "MappingSource", sdaiINSTANCE, &msInstance);
+	int mpInstance;
+	sdaiGetAttrBN(msInstance, "MappedRepresentation", sdaiINSTANCE, &mpInstance);
+	int* itemsAggr2 = nullptr;
+	sdaiGetAttrBN(mpInstance, "Items", sdaiAGGR, &itemsAggr2);
+	int itemInstance2;
+	engiGetAggrElement(itemsAggr2, 0, sdaiINSTANCE, &itemInstance2);
+	int areaInstance;
+	sdaiGetAttrBN(itemInstance2, "SweptArea", sdaiINSTANCE, &areaInstance);
+	sdaiGetAttrBN(areaInstance, "YDim", sdaiREAL, &sect[0]);
+	sdaiGetAttrBN(areaInstance, "XDim", sdaiREAL, &sect[1]);
+	return sect;
 }
+double Translator::getBeamRealLength(int elemInstance)
+{
+	int repreInstance;
+	sdaiGetAttrBN(elemInstance, "Representation", sdaiINSTANCE, &repreInstance);
+	int* repreAggr;
+	sdaiGetAttrBN(repreInstance, "Representations", sdaiAGGR, &repreAggr);
+	int shaperepInstance;
+	engiGetAggrElement(repreAggr, 1, sdaiINSTANCE, &shaperepInstance);
+	int* itemsAggr = nullptr;
+	sdaiGetAttrBN(shaperepInstance, "Items", sdaiAGGR, &itemsAggr);
+	int itemInstance;
+	engiGetAggrElement(itemsAggr, 0, sdaiINSTANCE, &itemInstance);
+	double elementlength = 0;
+	sdaiGetAttrBN(itemInstance, "Depth", sdaiREAL, &elementlength);
+	return elementlength;
+}
+double Translator::getBeamCalcuLength(int elemInstance)
+{
+	int repreInstance;
+	sdaiGetAttrBN(elemInstance, "Representation", sdaiINSTANCE, &repreInstance);
+	int* repreAggr;
+	sdaiGetAttrBN(repreInstance, "Representations", sdaiAGGR, &repreAggr);
+	int shaperepInstance;
+	engiGetAggrElement(repreAggr, 0, sdaiINSTANCE, &shaperepInstance);
+	int* itemsAggr = nullptr;
+	sdaiGetAttrBN(shaperepInstance, "Items", sdaiAGGR, &itemsAggr);
+	int itemInstance;
+	engiGetAggrElement(itemsAggr, 0, sdaiINSTANCE, &itemInstance);
+	int* pointAggr;
+	sdaiGetAttrBN(itemInstance, "Points", sdaiAGGR, &pointAggr);
+	int point0Instance,point1Instance;
+	engiGetAggrElement(pointAggr, 0, sdaiINSTANCE, &point0Instance);
+	engiGetAggrElement(pointAggr, 1, sdaiINSTANCE, &point1Instance);
+	int* coordinates0Aggr;
+	int* coordinates1Aggr;
+	sdaiGetAttrBN(point0Instance, "Coordinates", sdaiAGGR, &coordinates0Aggr);
+	sdaiGetAttrBN(point1Instance, "Coordinates", sdaiAGGR, &coordinates1Aggr);
+	double x0, y0, x1, y1;
+	engiGetAggrElement(coordinates0Aggr, 0, sdaiREAL, &x0);
+	engiGetAggrElement(coordinates0Aggr, 1, sdaiREAL, &y0);
+	engiGetAggrElement(coordinates1Aggr, 0, sdaiREAL, &x1);
+	engiGetAggrElement(coordinates1Aggr, 1, sdaiREAL, &y1);
+	return sqrt(pow(x0 - x1, 2) + pow(y0 - y1, 2));
+}
+
 
 int Translator::getIndex(std::string name)
 {

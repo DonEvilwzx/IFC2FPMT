@@ -45,9 +45,11 @@ private:
 	FpmtWriter fpmtwriter_;
 	std::map<double,std::vector<int>> floorElemInstanceTbl_;	//每层单元句柄集
 	std::unordered_set<std::string> matnameTbl_;				//材料表	
-	std::vector<double> getCoordinates(int elemInstance);
 	//double* getSect(int elemInstacne,bool isbeam);
-	std::pair<double,double> getSect(int elemInstacne, bool isbeam);
+	std::vector<double> getBeamRectSect(int elemInstacne);
+	std::vector<double> getColumnRectSect(int elemInstance);
+	double getBeamCalcuLength(int elemInstance);
+	double getBeamRealLength(int elemInstance);
 };
 
 

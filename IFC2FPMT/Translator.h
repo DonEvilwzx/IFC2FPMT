@@ -29,27 +29,27 @@ class Translator
 public:
 	Translator();
 	~Translator();
-	void translate();				//读入信息
-	void writefpmt();				//输出.fpmt文件
+	void translate(char* ifcFileName,char* ifcSchemaName);				//读入信息
 	void test1();
-	int getIndex(std::string name);
-	int getChildIndex(int parentIndex, std::string childname);
-	wchar_t* getName(int index);
-	void initialSTRUCT_ENTITY();
-	bool matchEntityName(wchar_t* ifcEntityName, int n, std::string s);
+	//int getIndex(std::string name);
+	//wchar_t* getName(int index);
+	//void initialSTRUCT_ENTITY();
+	//bool matchEntityName(wchar_t* ifcEntityName, int n, std::string s);
 	//void writeEntities();			
 private:
-	int model_;
-	int entitiesCnt_;
-	STRUCT_ENTITY	** entities_;
+	//int model_=0;
+	//int entitiesCnt_;
+	//STRUCT_ENTITY	** entities_;
 	FpmtWriter fpmtwriter_;
 	std::map<double,std::vector<int>> floorElemInstanceTbl_;	//每层单元句柄集
 	std::unordered_set<std::string> matnameTbl_;				//材料表	
-	//double* getSect(int elemInstacne,bool isbeam);
-	std::vector<double> getBeamRectSect(int elemInstacne);
-	std::vector<double> getColumnRectSect(int elemInstance);
-	double getBeamCalcuLength(int elemInstance);
-	double getBeamRealLength(int elemInstance);
+	std::vector<double> getBeamRectSect(const int& elemInstance);
+	std::vector<double> getColumnRectSect(const int& elemInstance);
+	std::vector<double> getBeamCoordinates(const int& elemInstance);
+	std::vector<double> getColumnCoordinates(const int& elemInstance);
+	double getBeamCalcuLength(const int& elemInstance);
+	double getBeamRealLength(const int& elemInstance);
+	double getH(const int& elemInstance);
 };
 
 

@@ -37,7 +37,7 @@ class FpmtWriter
 			ss << realno_ << "," << sectno_ << "," << matno_<<std::endl;
 			return ss.str();
 		}
-		Element(int id,int type,std::vector<int> vnodenum,int realno,int sectno,int matno):
+		Element(int id,std::string type,std::vector<int> vnodenum,int realno,int sectno,int matno):
 		id_(id),type_(type),vnodenum_(vnodenum),realno_(realno),sectno_(sectno),matno_(matno)
 		{	
 		}
@@ -49,7 +49,7 @@ class FpmtWriter
 		//void setMatNo(int matno) { matno_ = matno; }
 	private:
 		int id_;
-		int type_;
+		std::string type_;
 		std::vector<int> vnodenum_;
 		int realno_;
 		int sectno_;
@@ -58,9 +58,9 @@ class FpmtWriter
 public:
 	void writeFpmt();
 	void addNode(int id, double x, double y, double z);
-	void addElem(int id, int type, std::vector<int> vnodenum, int realno, int sectno, int matno);
+	void addElem(int id, std::string type, std::vector<int> vnodenum, int realno, int sectno, int matno);
 	bool emptySect();
-	void addSect(int id,int b,int h);
+	void addSect(int id,std::vector<double> param);
 	FpmtWriter();
 	~FpmtWriter();
 private:

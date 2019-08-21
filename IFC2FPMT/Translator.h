@@ -49,6 +49,7 @@ private:
 	std::vector<double> getColumnCoordinates(const int& elemInstance);
 	double getBeamCalcuLength(const int& elemInstance);
 	double getBeamRealLength(const int& elemInstance);
+	double getColumenLength(const int& elemInstance);
 	double getH(const int& elemInstance);
 };
 

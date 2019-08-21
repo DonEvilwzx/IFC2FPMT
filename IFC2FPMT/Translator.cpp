@@ -24,7 +24,6 @@
 Translator::Translator()
 {
 }
-
 Translator::~Translator()
 {
 }
@@ -128,6 +127,7 @@ void Translator::test1()
 	char* ifcFileName, * ifcSchemaName;
 	//ifcFileName = (char*)"Á½é¯èì¼Ü.ifc";
 	ifcFileName = (char*)"10²ã¿ò¼Ü.ifc";
+	//ifcFileName = (char*)"°²ÖÐ´óÂ¥.ifc";
 	ifcSchemaName = (char*)"IFC2X3_TC1.exp";
 	translate(ifcFileName,ifcSchemaName);
 	fpmtwriter_.addLEMat(1, 2.06e11, 7850, 0.3);
@@ -242,7 +242,36 @@ double Translator::getBeamCalcuLength(const int& elemInstance)
 	engiGetAggrElement(coordinates1Aggr, 1, sdaiREAL, &y1);
 	return sqrt(pow(x0 - x1, 2) + pow(y0 - y1, 2));
 }
-
+double Translator::getColumenLength(const int& elemInstance)
+{
+	int repreInstance;
+	sdaiGetAttrBN(elemInstance, "Representation", sdaiINSTANCE, &repreInstance);
+	int* repreAggr;
+	sdaiGetAttrBN(repreInstance, "Representations", sdaiAGGR, &repreAggr);
+	int shaperepInstance;
+	engiGetAggrElement(repreAggr, 0, sdaiINSTANCE, &shaperepInstance);
+	int* itemsAggr = nullptr;
+	sdaiGetAttrBN(shaperepInstance, "Items", sdaiAGGR, &itemsAggr);
+	int itemInstance;
+	engiGetAggrElement(itemsAggr, 0, sdaiINSTANCE, &itemInstance);
+	std::vector<double> sect(2);
+	int msInstance;
+	sdaiGetAttrBN(itemInstance, "MappingSource", sdaiINSTANCE, &msInstance);
+	int mpInstance;
+	sdaiGetAttrBN(msInstance, "MappedRepresentation", sdaiINSTANCE, &mpInstance);
+	int* itemsAggr2 = nullptr;
+	sdaiGetAttrBN(mpInstance, "Items", sdaiAGGR, &itemsAggr2);
+	int itemInstance2;
+	engiGetAggrElement(itemsAggr2, 0, sdaiINSTANCE, &itemInstance2);
+	int posInstance;
+	sdaiGetAttrBN(itemInstance2, "Position", sdaiINSTANCE, &posInstance);
+	int locInstance;
+	sdaiGetAttrBN(posInstance, "Location", sdaiINSTANCE, &locInstance);
+	int* coordAggr = nullptr;
+	double len;
+	sdaiGetAttrBN(itemInstance2, "Depth", sdaiREAL, &len);
+	return len;
+}
 double Translator::getH(const int& elemInstance)
 {
 	int opInstance;
@@ -284,43 +313,25 @@ std::vector<double> Translator::getBeamCoordinates(const int& elemInstance)
 	}
 	double len = getBeamCalcuLength(elemInstance);
 	double h = getH(elemInstance);
-	return roundv({ x0,y0,z0 + h,x0 + len * vd[0],y0 + len * vd[1],z0 +h + len * vd[2] });
+	return roundv({ x0,y0, h,x0 + len * vd[0],y0 + len * vd[1], h + len * vd[2] });
 }
 
 std::vector<double> Translator::getColumnCoordinates(const int& elemInstance)
 {
-	int repreInstance;
-	sdaiGetAttrBN(elemInstance, "Representation", sdaiINSTANCE, &repreInstance);
-	int* repreAggr;
-	sdaiGetAttrBN(repreInstance, "Representations", sdaiAGGR, &repreAggr);
-	int shaperepInstance;
-	engiGetAggrElement(repreAggr, 0, sdaiINSTANCE, &shaperepInstance);
-	int* itemsAggr = nullptr;
-	sdaiGetAttrBN(shaperepInstance, "Items", sdaiAGGR, &itemsAggr);
-	int itemInstance;
-	engiGetAggrElement(itemsAggr, 0, sdaiINSTANCE, &itemInstance);
-	std::vector<double> sect(2);
-	int msInstance;
-	sdaiGetAttrBN(itemInstance, "MappingSource", sdaiINSTANCE, &msInstance);
-	int mpInstance;
-	sdaiGetAttrBN(msInstance, "MappedRepresentation", sdaiINSTANCE, &mpInstance);
-	int* itemsAggr2 = nullptr;
-	sdaiGetAttrBN(mpInstance, "Items", sdaiAGGR, &itemsAggr2);
-	int itemInstance2;
-	engiGetAggrElement(itemsAggr2, 0, sdaiINSTANCE, &itemInstance2);
-	int posInstance;
-	sdaiGetAttrBN(itemInstance2, "Position", sdaiINSTANCE, &posInstance);
+	int opInstance;
+	sdaiGetAttrBN(elemInstance, "ObjectPlacement", sdaiINSTANCE, &opInstance);
+	int rpInstance;
+	sdaiGetAttrBN(opInstance, "RelativePlacement", sdaiINSTANCE, &rpInstance);
 	int locInstance;
-	sdaiGetAttrBN(posInstance, "Location", sdaiINSTANCE, &locInstance);
-	int* coordAggr=nullptr;
+	sdaiGetAttrBN(rpInstance, "Location", sdaiINSTANCE, &locInstance);
+	int* coordAggr;
 	sdaiGetAttrBN(locInstance, "Coordinates", sdaiAGGR, &coordAggr);
 	double x0, y0, z0;
 	engiGetAggrElement(coordAggr, 0, sdaiREAL, &x0);
 	engiGetAggrElement(coordAggr, 1, sdaiREAL, &y0);
 	engiGetAggrElement(coordAggr, 2, sdaiREAL, &z0);
-	double len;
-	sdaiGetAttrBN(itemInstance2, "Depth", sdaiREAL, &len);
-	return roundv({ x0,y0,z0,x0,y0,z0 + len });
+	double len=getColumenLength(elemInstance);
+	return roundv({ x0,y0,abs(z0),x0,y0,abs(z0) + len });
 }
 //int Translator::getIndex(std::string name)
 //{

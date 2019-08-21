@@ -54,7 +54,7 @@ void Translator::translate(char* ifcFileName, char* ifcSchemaName)
 		{
 			int n = vsect.size();
 			vsect[sect] = n + 1;
-			fpmtwriter_.addSect(n+1, sect);
+			fpmtwriter_.addRectSect(n+1, sect[0]/1000.0,sect[1]/1000.0);
 		}
 		
 		std::vector<double> coord = getBeamCoordinates(beamInstance);
@@ -65,7 +65,7 @@ void Translator::translate(char* ifcFileName, char* ifcSchemaName)
 		{
 			int n = vnode.size();
 			vnode[node1] = n + 1;
-			fpmtwriter_.addNode(n + 1, coord[0], coord[1], coord[2]);
+			fpmtwriter_.addNode(n + 1, coord[0]/1000.0, coord[1]/1000.0, coord[2]/1000.0);
 			no1 = n + 1;
 		}
 		else
@@ -75,12 +75,12 @@ void Translator::translate(char* ifcFileName, char* ifcSchemaName)
 		{
 			int n = vnode.size();
 			vnode[node2] = n + 1;
-			fpmtwriter_.addNode(n + 1, coord[0], coord[1], coord[2]);
+			fpmtwriter_.addNode(n + 1, coord[3]/1000.0, coord[4]/1000.0, coord[5]/1000.0);
 			no2 = n + 1;
 		}
 		else
 			no2 = vnode[node2];
-		fpmtwriter_.addElem(i + 1, "REAL", { no1,no2 },0,vsect[sect],0);
+		fpmtwriter_.addBeamElem(i + 1,no1,no2,vsect[sect],1 );
 	}
 
 	for (int i = 0; i < columnCount; i++)
@@ -92,7 +92,7 @@ void Translator::translate(char* ifcFileName, char* ifcSchemaName)
 		{
 			int n = vsect.size();
 			vsect[sect] = n + 1;
-			fpmtwriter_.addSect(n+1, sect);
+			fpmtwriter_.addRectSect(n + 1, sect[0]/1000.0, sect[1]/1000.0);
 		}
 
 		std::vector<double> coord = getColumnCoordinates(columnInstance);
@@ -103,7 +103,7 @@ void Translator::translate(char* ifcFileName, char* ifcSchemaName)
 		{
 			int n = vnode.size();
 			vnode[node1] = n + 1;
-			fpmtwriter_.addNode(n + 1, coord[0], coord[1], coord[2]);
+			fpmtwriter_.addNode(n + 1, coord[0]/1000.0, coord[1]/1000.0, coord[2]/1000.0);
 			no1 = n + 1;
 		}
 		else
@@ -113,12 +113,12 @@ void Translator::translate(char* ifcFileName, char* ifcSchemaName)
 		{
 			int n = vnode.size();
 			vnode[node2] = n + 1;
-			fpmtwriter_.addNode(n + 1, coord[0], coord[1], coord[2]);
+			fpmtwriter_.addNode(n + 1, coord[3] / 1000.0, coord[4] / 1000.0, coord[5]/1000.0);
 			no2 = n + 1;
 		}
 		else
 			no2 = vnode[node2];
-		fpmtwriter_.addElem(i +beamCount+1, "BEAM", { no1,no2 }, 0, vsect[sect], 0);
+		fpmtwriter_.addBeamElem(i+beamCount+ 1, no1, no2, vsect[sect], 1);
 	}
 	
 }
@@ -130,6 +130,7 @@ void Translator::test1()
 	ifcFileName = (char*)"10²ã¿ò¼Ü.ifc";
 	ifcSchemaName = (char*)"IFC2X3_TC1.exp";
 	translate(ifcFileName,ifcSchemaName);
+	fpmtwriter_.addLEMat(1, 2.06e11, 7850, 0.3);
 	fpmtwriter_.writeFpmt();
 }
 //int Translator::getChildIndex(int parentIndex, std::string childname)

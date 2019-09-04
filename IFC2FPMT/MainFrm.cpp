@@ -4,7 +4,7 @@
 
 #include "stdafx.h"
 #include "IFC2FPMT.h"
-#include "Translator.h"
+#include "IFCTranslator.h"
 #include "MainFrm.h"
 
 #ifdef _DEBUG
@@ -33,9 +33,9 @@ static UINT indicators[] =
 CMainFrame::CMainFrame() noexcept
 {
 	// TODO: 在此添加成员初始化代码
-	Translator translator;
-	//translator.translate();
-	translator.test1();
+	IFCTranslator IFCTranslator;
+	//IFCTranslator.translate();
+	IFCTranslator.test1();
 }
 
 CMainFrame::~CMainFrame()

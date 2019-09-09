@@ -23,8 +23,9 @@ void IFCTranslator::test1()
 {
 	std::basic_string<wchar_t> ifcSchemaName_IFC2x3 = L"IFC2X3_TC1.exp";
 	setOutputpath(_T("output.fpmt"));
+	//CString m_path = _T("10²ã¿ò¼Ü.ifc");
 	CString m_path = _T("10²ã¿ò¼Ü.ifc");
-	gModelIO.pIFCTranslator->translate(m_path, ifcSchemaName_IFC2x3);
+	translate(m_path, ifcSchemaName_IFC2x3);
 }
 void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName)
 {

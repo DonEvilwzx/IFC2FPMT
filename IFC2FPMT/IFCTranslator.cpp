@@ -23,7 +23,9 @@ void IFCTranslator::test1()
 {
 	std::basic_string<wchar_t> ifcSchemaName_IFC2x3 = L"IFC2X3_TC1.exp";
 	setOutputpath(_T("output.fpmt"));
+	//CString m_path = _T("10层框架.ifc");
 	CString m_path = _T("安中大楼.ifc");
+	//CString m_path = _T("公益小桥.ifc");
 	translate(m_path, ifcSchemaName_IFC2x3);
 }
 void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName)
@@ -35,86 +37,8 @@ void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> if
 	model = sdaiOpenModelBNUnicode(0, (char*)fileName, (char*)ifcSchemaName.c_str());
 	long long* columnAggr = sdaiGetEntityExtentBN(model, "IFCCOLUMN");
 	long long* beamAggr = sdaiGetEntityExtentBN(model, "IFCBEAM");
-	long long columnCount = sdaiGetMemberCount(columnAggr);
-	long long beamCount = sdaiGetMemberCount(beamAggr);
-	std::map<std::vector<double>, int> vsect;
-	std::map<std::vector<double>, int> vnode;
-	for (int i = 0; i < beamCount; i++)
-	{
-		long long beamInstance;
-		engiGetAggrElement(beamAggr, i, sdaiINSTANCE, &beamInstance);
-
-		std::vector<double> sect = getBeamRectSect(beamInstance);
-		if (vsect.find(sect) == vsect.end())
-		{
-			int n = vsect.size();
-			vsect[sect] = n + 1;
-			fpmtwriter_.addRectSect(n + 1, sect[0] / 1000.0, sect[1] / 1000.0);
-		}
-
-		std::vector<double> coord = getBeamCoordinates(beamInstance);
-		std::vector<double> node1 = { coord[0],coord[1],coord[2] };
-		std::vector<double> node2 = { coord[3],coord[4],coord[5] };
-		int no1, no2;
-		if (vnode.find(node1) == vnode.end())
-		{
-			int n = vnode.size();
-			vnode[node1] = n + 1;
-			fpmtwriter_.addNode(n + 1, coord[0] / 1000.0, coord[1] / 1000.0, coord[2] / 1000.0);
-			no1 = n + 1;
-		}
-		else
-			no1 = vnode[node1];
-
-		if (vnode.find(node2) == vnode.end())
-		{
-			int n = vnode.size();
-			vnode[node2] = n + 1;
-			fpmtwriter_.addNode(n + 1, coord[3] / 1000.0, coord[4] / 1000.0, coord[5] / 1000.0);
-			no2 = n + 1;
-		}
-		else
-			no2 = vnode[node2];
-		fpmtwriter_.addBeamElem(i + 1, no1, no2, vsect[sect], 1);
-	}
-
-	for (int i = 0; i < columnCount; i++)
-	{
-		long long columnInstance;
-		engiGetAggrElement(columnAggr, i, sdaiINSTANCE, &columnInstance);
-		std::vector<double> sect = getColumnRectSect(columnInstance);
-		if (vsect.find(sect) == vsect.end())
-		{
-			int n = vsect.size();
-			vsect[sect] = n + 1;
-			fpmtwriter_.addRectSect(n + 1, sect[0] / 1000.0, sect[1] / 1000.0);
-		}
-
-		std::vector<double> coord = getColumnCoordinates(columnInstance);
-		std::vector<double> node1 = { coord[0],coord[1],coord[2] };
-		std::vector<double> node2 = { coord[3],coord[4],coord[5] };
-		int no1, no2;
-		if (vnode.find(node1) == vnode.end())
-		{
-			int n = vnode.size();
-			vnode[node1] = n + 1;
-			fpmtwriter_.addNode(n + 1, coord[0] / 1000.0, coord[1] / 1000.0, coord[2] / 1000.0);
-			no1 = n + 1;
-		}
-		else
-			no1 = vnode[node1];
-
-		if (vnode.find(node2) == vnode.end())
-		{
-			int n = vnode.size();
-			vnode[node2] = n + 1;
-			fpmtwriter_.addNode(n + 1, coord[3] / 1000.0, coord[4] / 1000.0, coord[5] / 1000.0);
-			no2 = n + 1;
-		}
-		else
-			no2 = vnode[node2];
-		fpmtwriter_.addBeamElem(i + beamCount + 1, no1, no2, vsect[sect], 1);
-	}
+	setElem2Fpmt(&columnAggr,"column");
+	setElem2Fpmt(&beamAggr,"beam");
 	fpmtwriter_.addLEMat(1, 7850, 2.06e11, 0.3);
 	fpmtwriter_.writeFpmt(outputpath_);
 }
@@ -164,6 +88,56 @@ std::vector<double> IFCTranslator::getColumnRectSect(const long long& elemInstan
 	sdaiGetAttrBN(areaInstance, "YDim", sdaiREAL, &sect[0]);
 	sdaiGetAttrBN(areaInstance, "XDim", sdaiREAL, &sect[1]);
 	return roundv(sect);
+}
+
+void IFCTranslator::setElem2Fpmt(long long** aggr, std::string elemtype)
+{
+	int count = sdaiGetMemberCount(*aggr);
+	for (int i = 0; i < count; i++)
+	{
+		long long instance;
+		engiGetAggrElement(*aggr, i, sdaiINSTANCE, &instance);
+		std::vector<double> sect;
+		if(elemtype=="beam")
+			 sect= getBeamRectSect(instance);
+		else if (elemtype == "column")
+			 sect = getColumnRectSect(instance);
+		if (vsect_.find(sect) == vsect_.end())
+		{
+			int n = vsect_.size();
+			vsect_[sect] = n + 1;
+			fpmtwriter_.addRectSect(n + 1, sect[0] / 1000.0, sect[1] / 1000.0);
+		}
+
+		std::vector<double> coord; 
+		if (elemtype == "beam")
+			coord = getBeamCoordinates(instance);
+		else if(elemtype=="column")
+			coord = getColumnCoordinates(instance);
+		std::vector<double> node1 = { coord[0],coord[1],coord[2] };
+		std::vector<double> node2 = { coord[3],coord[4],coord[5] };
+		int no1, no2;
+		if (vnode_.find(node1) == vnode_.end())
+		{
+			int n = vnode_.size();
+			vnode_[node1] = n + 1;
+			fpmtwriter_.addNode(n + 1, coord[0] / 1000.0, coord[1] / 1000.0, coord[2] / 1000.0);
+			no1 = n + 1;
+		}
+		else
+			no1 = vnode_[node1];
+
+		if (vnode_.find(node2) == vnode_.end())
+		{
+			int n = vnode_.size();
+			vnode_[node2] = n + 1;
+			fpmtwriter_.addNode(n + 1, coord[3] / 1000.0, coord[4] / 1000.0, coord[5] / 1000.0);
+			no2 = n + 1;
+		}
+		else
+			no2 = vnode_[node2];
+		fpmtwriter_.addBeamElem(++elemcount_, no1, no2, vsect_[sect], 1);
+	}
 }
 double IFCTranslator::getBeamRealLength(const long long& elemInstance)
 {
@@ -299,6 +273,10 @@ std::vector<double> IFCTranslator::getColumnCoordinates(const long long& elemIns
 	engiGetAggrElement(coordAggr, 2, sdaiREAL, &z0);
 	double len = getColumenLength(elemInstance);
 	return roundv({ x0,y0,abs(z0),x0,y0,abs(z0) + len });
+}
+std::string getMat(const long long& elemInstance)
+{
+	return " ";
 }
 void IFCTranslator::setOutputpath(const CString& opath)
 {

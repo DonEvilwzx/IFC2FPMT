@@ -37,9 +37,8 @@ void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> if
 	model = sdaiOpenModelBNUnicode(0, (char*)fileName, (char*)ifcSchemaName.c_str());
 	long long* columnAggr = sdaiGetEntityExtentBN(model, "IFCCOLUMN");
 	long long* beamAggr = sdaiGetEntityExtentBN(model, "IFCBEAM");
-	setElem2Fpmt(&columnAggr,"column");
-	setElem2Fpmt(&beamAggr,"beam");
-	fpmtwriter_.addLEMat(1, 7850, 2.06e11, 0.3);
+	setElem2Fpmt(&columnAggr, "column");
+	setElem2Fpmt(&beamAggr, "beam");
 	fpmtwriter_.writeFpmt(outputpath_);
 }
 
@@ -98,10 +97,10 @@ void IFCTranslator::setElem2Fpmt(long long** aggr, std::string elemtype)
 		long long instance;
 		engiGetAggrElement(*aggr, i, sdaiINSTANCE, &instance);
 		std::vector<double> sect;
-		if(elemtype=="beam")
-			 sect= getBeamRectSect(instance);
+		if (elemtype == "beam")
+			sect = getBeamRectSect(instance);
 		else if (elemtype == "column")
-			 sect = getColumnRectSect(instance);
+			sect = getColumnRectSect(instance);
 		if (vsect_.find(sect) == vsect_.end())
 		{
 			int n = vsect_.size();
@@ -109,10 +108,27 @@ void IFCTranslator::setElem2Fpmt(long long** aggr, std::string elemtype)
 			fpmtwriter_.addRectSect(n + 1, sect[0] / 1000.0, sect[1] / 1000.0);
 		}
 
-		std::vector<double> coord; 
+		std::vector<double> mat;
+		mat = getMat(instance);
+		bool isFind = false;
+		for (auto itr : vmat_)
+		{
+			if (itr.first[0] == mat[0] && itr.first[1] == mat[1] && itr.first[2] - mat[2] < 10e-6)
+			{
+				isFind = true;
+				break;
+			}
+		}
+		if (!isFind)
+		{
+			int n = vmat_.size();
+			vmat_[mat] = n + 1;
+			fpmtwriter_.addLEMat(n + 1, mat[0], mat[1], mat[2]);
+		}
+		std::vector<double> coord;
 		if (elemtype == "beam")
 			coord = getBeamCoordinates(instance);
-		else if(elemtype=="column")
+		else if (elemtype == "column")
 			coord = getColumnCoordinates(instance);
 		std::vector<double> node1 = { coord[0],coord[1],coord[2] };
 		std::vector<double> node2 = { coord[3],coord[4],coord[5] };
@@ -265,7 +281,7 @@ std::vector<double> IFCTranslator::getColumnCoordinates(const long long& elemIns
 	sdaiGetAttrBN(opInstance, "RelativePlacement", sdaiINSTANCE, &rpInstance);
 	long long locInstance;
 	sdaiGetAttrBN(rpInstance, "Location", sdaiINSTANCE, &locInstance);
-	long long* coordAggr;
+	long long* coordAggr = nullptr;
 	sdaiGetAttrBN(locInstance, "Coordinates", sdaiAGGR, &coordAggr);
 	double x0, y0, z0;
 	engiGetAggrElement(coordAggr, 0, sdaiREAL, &x0);
@@ -274,10 +290,53 @@ std::vector<double> IFCTranslator::getColumnCoordinates(const long long& elemIns
 	double len = getColumenLength(elemInstance);
 	return roundv({ x0,y0,abs(z0),x0,y0,abs(z0) + len });
 }
-std::string getMat(const long long& elemInstance)
+
+std::vector<double> IFCTranslator::getMat(const long long& elemInstance)
 {
-	return " ";
+	long long* associationAggr = nullptr;
+	sdaiGetAttrBN(elemInstance, "HasAssociations", sdaiAGGR, &associationAggr);
+	long long associationInstance;
+	engiGetAggrElement(associationAggr, 0, sdaiINSTANCE, &associationInstance);
+	long long relatingMaterialInstance;
+	sdaiGetAttrBN(associationInstance, "RelatingMaterial", sdaiINSTANCE, &relatingMaterialInstance);
+	wchar_t* matname=0;
+	sdaiGetAttrBN(relatingMaterialInstance, "Name", sdaiUNICODE, &matname);
+	std::vector<double> mat = { 7850,2.06e11,0.3 };
+	if (wcsstr(matname, L"»ìÄýÍÁ") || StrStrIW(matname, L"concrete"))
+	{
+		mat[0] = 2500;
+		if (wcsstr(matname, L"25"))
+			mat[1] = 2.2e10;
+		else if (wcsstr(matname, L"35"))
+			mat[1] = 2.55e10;
+		else if (wcsstr(matname, L"30"))
+			mat[1] = 2.8e10;
+		else if (wcsstr(matname, L"35"))
+			mat[1] = 3.0e10;
+		else if (wcsstr(matname, L"40"))
+			mat[1] = 3.25e10;
+		else if (wcsstr(matname, L"45"))
+			mat[1] = 3.35e10;
+		else if (wcsstr(matname, L"50"))
+			mat[1] = 3.45e10;
+		else if (wcsstr(matname, L"55"))
+			mat[1] = 3.55e10;
+		else if (wcsstr(matname, L"60"))
+			mat[1] = 3.6e10;
+		else if (wcsstr(matname, L"65"))
+			mat[1] = 3.65e10;
+		else if (wcsstr(matname, L"70"))
+			mat[1] = 3.70e10;
+		else if (wcsstr(matname, L"75"))
+			mat[1] = 3.75e10;
+		else if (wcsstr(matname, L"80"))
+			mat[1] = 3.80e10;
+		else 
+			mat[1]= 3.25e10;
+	}
+	return mat;
 }
+
 void IFCTranslator::setOutputpath(const CString& opath)
 {
 	memcpy(outputpath_, opath, opath.GetLength() * sizeof(wchar_t));

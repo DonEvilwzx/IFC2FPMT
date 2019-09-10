@@ -11,11 +11,12 @@ public:
 	void setOutputpath(const CString& opath);
 	void test1();
 private:
-	std::map<std::vector<double>, int> vsect_;
-	std::map<std::vector<double>, int> vnode_;
 	FpmtWriter fpmtwriter_;
 	wchar_t outputpath_[512];
-	int elemcount_=0;
+	std::map<std::vector<double>, int> vsect_;
+	std::map<std::vector<double>, int> vmat_;
+	std::map<std::vector<double>, int> vnode_;
+	int elemcount_ = 0;
 	std::vector<double> getBeamRectSect(const long long& elemInstance);
 	std::vector<double> getColumnRectSect(const long long& elemInstance);
 	std::vector<double> getBeamCoordinates(const long long& elemInstance);
@@ -25,5 +26,5 @@ private:
 	double getColumenLength(const long long& elemInstance);
 	double getH(const long long& elemInstance);
 	void setElem2Fpmt(long long** aggr,std::string elemtype);
-	std::string getMat(const long long& elemInstance);
+	std::vector<double> getMat(const long long& elemInstance);
 };

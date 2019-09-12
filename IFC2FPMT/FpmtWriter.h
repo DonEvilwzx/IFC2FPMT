@@ -7,11 +7,11 @@ class FpmtWriter
 {
 public:
 	void addTubeSect(int id, double d, double t);
-	void addRectSect(int id, double w, double h, double eular = 0);
+	void addRectSect(int id, double w=0.6, double h=0.6, double eular = 0);
 	void addRoundSect(int id, double d);
 	void addCustomSect(int id, double A, double ly, double lz, double lyz);
 	void addThickSect(int id, double T);
-	void addLEMat(int id, double density, double E, double v, double zeta_a = 0, double zeta_b = 0);
+	void addLEMat(int id, double density=7850, double E=2.06e11, double v=0.3, double zeta_a = 0, double zeta_b = 0);
 	void addEPPMat(int id, double E, double density, double v, double sigcr, double G = 0);
 	void addBKINMat(int id, double E, double density, double v, double sigcr, double et, double G = 0);
 	void addBISOMat(int id, double E, double density, double v, double sigcr, double et, double G = 0);

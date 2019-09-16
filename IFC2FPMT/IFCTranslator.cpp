@@ -3,11 +3,12 @@
 #include <string>
 #include <set>
 #include <fstream>
+#include<algorithm>
 #include "ifcengine/include/engine.h"
 #include "ifcengine/include/ifcengine.h"
 
-const double ERRORTHICK = 600;
-const double ERRORDOUBLE = 1e-6;
+const double ERRORTHICK = 800;
+const double ERRORDOUBLE = 1;
 
 IFCTranslator::~IFCTranslator()
 {
@@ -20,42 +21,74 @@ std::vector<double> roundv(std::vector<double> v)
 		rev.push_back(round(itr));
 	return rev;
 }
-
-std::vector<double> IFCTranslator::getCrossPoint(Element elem1,Element elem2)
+bool equalDouble(std::vector<double> v1, std::vector<double> v2)
 {
-	std::vector<double> e1n1 = mNodeTable[elem1.nodeNum1];
-	std::vector<double> e1n2 = mNodeTable[elem1.nodeNum2];
-	std::vector<double> e2n1 = mNodeTable[elem2.nodeNum1];
-	std::vector<double> e2n2 = mNodeTable[elem2.nodeNum2];
-	double denominator = (e1n2[1] - e1n1[1]) * (e2n2[0] - e2n1[0]) - (e1n1[0] - e1n2[0]) * (e2n1[1] - e2n2[1]);
-	if (denominator == 0) 
-		return {};
-	// 线段所在直线的交点坐标 (x , y)      
-	double x = ((e1n2[0] - e1n1[0]) * (e2n2[0] - e2n1[0]) * (e2n1[1] - e1n1[1])
-		+ (e1n2[1] - e1n1[1]) * (e2n2[0] - e2n1[0]) * e1n1[0]
-		- (e2n2[1] - e2n1[1]) * (e1n2[0] - e1n1[0]) * e2n1[0]) / denominator;
-	double y = -((e1n2[1] - e1n1[1]) * (e2n2[1] - e2n1[1]) * (e2n1[0] - e1n1[0])
-		+ (e1n2[0] - e1n1[0]) * (e2n2[1] - e2n1[1]) * e1n1[1]
-		- (e2n2[0] - e2n1[0]) * (e1n2[1] - e1n1[1]) * e2n1[1]) / denominator;
-
-	/** 2 判断交点是否在两条线段上 **/
-	if (
-		// 交点在线段1上  
-		(x - e1n1[0]) * (x - e1n2[0]) <= 0 && (y - e1n1[1]) * (y - e1n2[1]) <= 0
-		// 且交点也在线段2上  
-		&& (x - e2n1[0]) * (x - e2n2[0]) <= 0 && (y - e2n1[1]) * (y - e2n2[1]) <= 0
-		) {
-		// 返回交点p  
-		return { x,y };
+	int n = v2.size();
+	for (int i = 0; i < n; i++)
+	{
+		if (v1[i] - v2[i] > ERRORDOUBLE || v1[i] - v2[i] < -ERRORDOUBLE)return false;
 	}
-	//考虑梁的厚度
-	else if((abs(x-e2n1[0])<ERRORTHICK&&abs(y-e2n1[1])<ERRORTHICK)|| ((abs(x - e2n2[0]) < ERRORTHICK && abs(y - e2n2[1]) < ERRORTHICK))
-		|| (abs(x - e1n1[0]) < ERRORTHICK && abs(y - e1n1[1]) < ERRORTHICK) || (abs(x - e1n2[0]) < ERRORTHICK && abs(y - e1n2[1]) < ERRORTHICK))
+	return true;
+}
+
+bool equalThick(std::vector<double> v1, std::vector<double> v2)
+{
+	int n = v2.size();
+	for (int i = 0; i < n; i++)
+	{
+		if (v1[i] - v2[i] > ERRORTHICK||v1[i]-v2[i]<-ERRORTHICK)return false;
+	}
+	return true;
+}
+
+std::vector<double> IFCTranslator::getCrossPoint(Element elem1, Element elem2)
+{
+	std::vector<double> e1n1 = elem1.node1;
+	std::vector<double> e1n2 = elem1.node2;
+	std::vector<double> e2n1 = elem2.node1;
+	std::vector<double> e2n2 = elem2.node2;
+	if (abs(e1n1[0] - e1n2[0]) < ERRORDOUBLE)
+	{
+		double x = e1n1[0];
+		double y = e2n1[1];
+		if (abs(e2n1[0] - e2n2[0]) < ERRORDOUBLE) return{}; //平行
+		if (abs(x - e2n1[0]) > ERRORTHICK && abs(x - e2n2[0]) > ERRORTHICK && (x - e2n1[0]) * (x - e2n2[0]) > 0) return {};  //交点在e2延长线
+		if (
+			(y - e1n1[1]) * (y - e1n2[1]) < 0
+			)
 		{
+			vcross_.insert({ x,y,e1n1[2] });
 			return { x,y };
 		}
-	//否则不相交  
-	return {};
+		else if (abs(y - e1n1[1]) < ERRORTHICK || abs(y - e1n2[1]) < ERRORTHICK)
+		{
+			vcross_.insert({ x,y,e1n1[2] });
+			return { x,y };
+		}
+		else
+			return {};
+	}
+	else
+	{
+		double x = e2n1[0];
+		double y = e1n1[1];
+		if (abs(e2n1[1] - e2n2[1]) < ERRORDOUBLE) return{}; //平行
+		if (abs(y - e2n1[1]) > ERRORTHICK && abs(y - e2n2[1]) > ERRORTHICK && (y - e2n1[1]) * (y - e2n2[1]) > 0) return {};  //交点在e2延长线
+		if (
+			(x - e1n1[0]) * (x - e1n2[0]) < 0
+			)
+		{
+			vcross_.insert({ x,y,e1n1[2] });
+			return { x,y };
+		}
+		else if (abs(x - e1n1[0]) < ERRORTHICK || abs(x - e1n2[0]) < ERRORTHICK)
+		{
+			vcross_.insert({ x,y,e1n1[2] });
+			return { x,y };
+		}
+		else
+			return {};
+	}
 }
 
 void IFCTranslator::test1()
@@ -64,105 +97,90 @@ void IFCTranslator::test1()
 	setOutputpath(_T("output.fpmt"));
 	//CString m_path = _T("10层框架.ifc");
 	//CString m_path = _T("安中大楼.ifc");
-	//CString m_path = _T("公益小桥.ifc");
 	CString m_path = _T("教学楼项目.ifc");
+	//CString m_path = _T("15#梁柱.0001.ifc");
+	//CString m_path = _T("小高层商住楼.0001.ifc");
 	translate(m_path, ifcSchemaName_IFC2x3);
 }
-bool equalDouble(std::vector<double> v1, std::vector<double> v2)
-{
-	for (int i = 0; i < v2.size(); i++)
-	{  
-		if (abs(v1[i] - v2[i]) > ERRORDOUBLE)return false;
-	}
-	return true;
-}
 
-bool equalThick(std::vector<double> v1, std::vector<double> v2)
-{
-	for (int i = 0; i < v2.size(); i++)
-	{
-		if (abs(v1[i] - v2[i]) > ERRORTHICK)return false;
-	}
-	return true;
-}
+//
+//void IFCTranslator::splitBeam(Element e,const std::vector<Element>& v)
+//{
+//	std::vector<double> crosspoint;
+//	int elemNum2=0;
+//	Element e2;
+//	for (auto itr : mElemTable)
+//	{
+//		if (itr.first == elemNum)continue;
+//		crosspoint = getCrossPoint(e, itr.second);
+//		if (crosspoint.size() > 0)
+//		{
+//			elemNum2 = itr.first;
+//			e2 = itr.second;
+//			/*两个单元不相交或者两个单元端点相交*/
+//			if (crosspoint.empty() || (equalDouble(mNodeTable[e.nodeNum1], crosspoint) || equalDouble(mNodeTable[e.nodeNum2], crosspoint)
+//				&& equalDouble(mNodeTable[e2.nodeNum1], crosspoint) || equalDouble(mNodeTable[e2.nodeNum2], crosspoint)))continue;
+//			/*两个单元相交生成4个单元的情况*/
+//			else if (!(equalThick(mNodeTable[e.nodeNum1], crosspoint) && !equalThick(mNodeTable[e.nodeNum2], crosspoint)
+//				&& !equalThick(mNodeTable[e2.nodeNum1], crosspoint) && !equalThick(mNodeTable[e2.nodeNum2], crosspoint)))
+//			{
+//				int newnodeNum = mNodeTable.size() + 1;
+//				mNodeTable[newnodeNum] = crosspoint;
+//				splitByNode(newnodeNum, elemNum, e);
+//				splitByNode(newnodeNum, elemNum2, e2);
+//			}
+//			/*两个单元相交生成3个单元的情况*/
+//			else
+//			{
+//				int splitnodeNum;	//交点编号
+//				int splitelemNum;	//被分割单元编号
+//				Element splitElem;	//被分割单元
+//				if (equalThick(mNodeTable[e.nodeNum1], crosspoint))
+//				{
+//					splitnodeNum = e.nodeNum1;
+//					splitElem = e2;
+//					splitelemNum = elemNum2;
+//				}
+//				else if (equalThick(mNodeTable[e.nodeNum2], crosspoint))
+//				{
+//					splitnodeNum = e.nodeNum2;
+//					splitElem = e2;
+//					splitelemNum = elemNum2;
+//				}
+//				else if (equalThick(mNodeTable[e2.nodeNum1], crosspoint))
+//				{
+//					splitnodeNum = e2.nodeNum1;
+//					splitElem = e;
+//					splitelemNum = elemNum;
+//				}
+//				else
+//				{
+//					splitnodeNum = e2.nodeNum2;
+//					splitElem = e;
+//					splitelemNum = elemNum;
+//				}
+//				//消除梁厚度影响
+//				mNodeTable[splitnodeNum] = crosspoint;
+//				splitByNode(splitnodeNum, splitelemNum, splitElem);
+//			}
+//		}
+//	}
+//
+//}
+//
+//void IFCTranslator::splitByNode(int splitnodeNum, int splitelemNum, Element splitElem)
+//{
+//	Element newelem;		//新单元
+//	newelem.nodeNum1 = splitnodeNum;
+//	newelem.nodeNum2 = splitElem.nodeNum2;
+//	newelem.matNum = splitElem.matNum;
+//	newelem.sectNum = splitElem.sectNum;
+//	int newElemNum = mElemTable.size()+1;
+//	mElemTable[newElemNum] = newelem;
+//	mElemTable[splitelemNum].nodeNum2 = splitnodeNum;
+//}
 
-void IFCTranslator::splitBeams(int elemNum,Element e)
-{
-	std::vector<double> crosspoint;
-	int elemNum2=0;
-	Element e2;
-	for (auto itr : mElemTable)
-	{
-		if (itr.first == elemNum)continue;
-		crosspoint = getCrossPoint(e, itr.second);
-		if (crosspoint.size() > 0)
-		{
-			elemNum2 = itr.first;
-			e2 = itr.second;
-			break;
-		}
-	}
-	/*两个单元不相交或者两个单元端点相交*/
-	if (crosspoint.empty() || (equalDouble(mNodeTable[e.nodeNum1], crosspoint) || equalDouble(mNodeTable[e.nodeNum2], crosspoint)
-		&& equalDouble(mNodeTable[e2.nodeNum1], crosspoint) || equalDouble(mNodeTable[e2.nodeNum2], crosspoint)))return;
-	/*两个单元相交生成4个单元的情况*/
-	else if (!(equalDouble(mNodeTable[e.nodeNum1], crosspoint) && !equalDouble(mNodeTable[e.nodeNum2], crosspoint)
-		&& !equalDouble(mNodeTable[e2.nodeNum1], crosspoint) && !equalDouble(mNodeTable[e2.nodeNum2], crosspoint)))
-	{
-		int newnodeNum = mNodeTable.size()+1;
-		mNodeTable[newnodeNum] = crosspoint;
-		splitByNode(newnodeNum, elemNum, e);
-		splitByNode(newnodeNum, elemNum2, e2);
-	}
-	/*两个单元相交生成3个单元的情况*/
-	else
-	{
-		int splitnodeNum;	//交点编号
-		int splitelemNum;	//被分割单元编号
-		Element splitElem;	//被分割单元
-		if (equalThick(mNodeTable[e.nodeNum1],crosspoint))
-		{
-			splitnodeNum = e.nodeNum1;
-			splitElem = e2;
-			splitelemNum = elemNum2;
-		}
-		else if (equalThick(mNodeTable[e.nodeNum2], crosspoint))
-		{
-			splitnodeNum = e.nodeNum2;
-			splitElem = e2;
-			splitelemNum = elemNum2;
-		}
-		else if (equalThick(mNodeTable[e2.nodeNum1], crosspoint))
-		{
-			splitnodeNum = e2.nodeNum1;
-			splitElem = e;
-			splitelemNum = elemNum;
-		}
-		else
-		{
-			splitnodeNum = e2.nodeNum2;
-			splitElem = e;
-			splitelemNum = elemNum;
-		}
-		//消除梁厚度影响
-		mNodeTable[splitnodeNum] = crosspoint;
-		splitByNode(splitnodeNum, splitelemNum, splitElem);
-	}
-}
-
-void IFCTranslator::splitByNode(int splitnodeNum, int splitelemNum, Element splitElem)
-{
-	Element newelem;		//新单元
-	newelem.nodeNum1 = splitnodeNum;
-	newelem.nodeNum2 = splitElem.nodeNum2;
-	newelem.matNum = splitElem.matNum;
-	newelem.sectNum = splitElem.sectNum;
-	int newElemNum = mElemTable.size();
-	mElemTable[newElemNum] = newelem;
-	mElemTable[splitelemNum].nodeNum2 = splitnodeNum;
-}
-
-void IFCTranslator::setBeam(const long long& bsInstance)
+std::vector<Element> IFCTranslator::getBeams(const long long& bsInstance)
 {
 	double elevation;
 	sdaiGetAttrBN(bsInstance, "Elevation", sdaiREAL, &elevation);
@@ -173,37 +191,36 @@ void IFCTranslator::setBeam(const long long& bsInstance)
 	long long* relatedElemAggr;
 	sdaiGetAttrBN(containElemInstance, "RelatedElements", sdaiAGGR, &relatedElemAggr);
 	int count = sdaiGetMemberCount(relatedElemAggr);
+	std::vector<Element> rev;
 	for (int i = 0; i < count; i++)
 	{
 		long long instance;
 		engiGetAggrElement(relatedElemAggr, i, sdaiINSTANCE, &instance);
 		std::string elemtype = engiGetInstanceClassInfoUC(instance);
 		if (elemtype != "IFCBEAM")continue;
-
-		
 		std::wstring matname;
 		matname = getMatName(instance);
 		int matno;
-		if (mMatTable.find(matname) == mMatTable.end())
+		if (vmat_.find(matname) == vmat_.end())
 		{
-			int n = mMatTable.size();
+			int n = vmat_.size();
 			matno = n + 1;
-			mMatTable[matname] = matno;
+			vmat_[matname] = matno;
 		}
 		else
-			matno = mMatTable[matname];
+			matno = vmat_[matname];
 
 		std::wstring sectname;
 		sectname = getSectName(instance);
 		int sectno;
-		if (mSectTable.find(sectname) == mSectTable.end())
+		if (vsect_.find(sectname) == vsect_.end())
 		{
-			int n = mSectTable.size();
+			int n = vsect_.size();
 			sectno = n + 1;
-			mSectTable[sectname] = sectno;
+			vsect_[sectname] = sectno;
 		}
 		else
-			sectno = mSectTable[sectname];
+			sectno = vsect_[sectname];
 
 		std::vector<double> coord;
 		coord = getBeamCoordinates(instance);
@@ -212,49 +229,16 @@ void IFCTranslator::setBeam(const long long& bsInstance)
 
 		std::vector<double> node1 = { coord[0],coord[1],coord[2] };
 		std::vector<double> node2 = { coord[3],coord[4],coord[5] };
-		int no1, no2;
-		bool isFind = false;
-		for (auto itr : mNodeTable)
-		{
-			if (abs(itr.second[0] - node1[0]) < ERRORTHICK && abs(itr.second[1] - node1[1]) < ERRORTHICK && abs(itr.second[2] - node1[2]) < ERRORTHICK)
-			{
-				isFind = true;
-				no1 = itr.first;
-				break;
-			}
-		}
-		if (!isFind)
-		{
-			int n = mNodeTable.size();
-			no1 = n + 1;
-			mNodeTable[no1]= node1;
-		}
 
-		isFind = false;
-		for (auto itr : mNodeTable)
-		{
-			if (abs(itr.second[0] - node2[0]) < ERRORTHICK && abs(itr.second[1] - node1[1]) < ERRORTHICK && abs(itr.second[2] - node1[2]) < ERRORTHICK)
-			{
-				isFind = true;
-				no2 = itr.first;
-				break;
-			}
-		}
-		if (!isFind)
-		{
-			int n = mNodeTable.size();
-			no2 = n + 1;
-			mNodeTable[no2] = node2;
-		}
 		Element elem;
 		elem.matNum = matno;
 		elem.sectNum = sectno;
-		elem.nodeNum1 = no1;
-		elem.nodeNum2 = no2;
-		int elemNum = mElemTable.size() + 1;
-		mElemTable[elemNum] = elem;
-		splitBeams(elemNum,elem);
+		elem.node1 = node1;
+		elem.node2 = node2;
+		rev.push_back(elem);
 	}
+	splitBeams(rev);
+	return rev;
 }
 
 void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName)
@@ -266,21 +250,146 @@ void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> if
 	model = sdaiOpenModelBNUnicode(0, (char*)fileName, (char*)ifcSchemaName.c_str());
 	long long* buildingstoreyAggr = sdaiGetEntityExtentBN(model, "IFCBUILDINGSTOREY");
 	int bscnt= sdaiGetMemberCount(buildingstoreyAggr);
+	
+	//梁
 	for (int i = 0; i < bscnt; i++)
 	{
 		long long bsInstance;
 		engiGetAggrElement(buildingstoreyAggr,i,sdaiINSTANCE,&bsInstance);
-		setBeam(bsInstance);
+		std::vector<Element> vbeam= getBeams(bsInstance);
+		setBeams(vbeam);
 	}
 
-	for (auto itr : mMatTable)
-		fpmtwriter_.addLEMat(itr.second);
-	for (auto itr : mSectTable)
-		fpmtwriter_.addRectSect(itr.second);
-	for (auto itr : mNodeTable)
-		fpmtwriter_.addNode(itr.first, itr.second[0], itr.second[1], itr.second[2]);
-	for (auto itr : mElemTable)
-		fpmtwriter_.addBeamElem(itr.first, itr.second.nodeNum1, itr.second.nodeNum2, itr.second.sectNum, itr.second.matNum);
+	//根据梁单元对节点编号
+	for (auto elem : velem_)
+	{
+		std::vector<double> node1 = elem.node1;
+		if (vnode_.find(node1) == vnode_.end())
+		{
+			int n = vnode_.size() + 1;
+			vnode_.insert({ node1,n });
+		}
+
+		std::vector<double> node2 = elem.node2;
+		if (vnode_.find(node2) == vnode_.end())
+		{
+			int n = vnode_.size() + 1;
+			vnode_.insert({ node2,n });
+		}
+	}
+
+
+	//柱
+	for (int i = 0; i < bscnt-1; i++)
+	{
+		long long bsInstance1;
+		long long bsInstance2;
+		engiGetAggrElement(buildingstoreyAggr, i, sdaiINSTANCE, &bsInstance1);
+		engiGetAggrElement(buildingstoreyAggr, i+1, sdaiINSTANCE, &bsInstance2);
+		double elevation1,elevation2;
+		sdaiGetAttrBN(bsInstance1, "Elevation", sdaiREAL, &elevation1);
+		sdaiGetAttrBN(bsInstance2, "Elevation", sdaiREAL, &elevation2);
+		long long* containElemAggr;
+		sdaiGetAttrBN(bsInstance1, "ContainsElements", sdaiAGGR, &containElemAggr);
+		long long containElemInstance;
+		engiGetAggrElement(containElemAggr, 0, sdaiINSTANCE, &containElemInstance);
+		long long* relatedElemAggr;
+		sdaiGetAttrBN(containElemInstance, "RelatedElements", sdaiAGGR, &relatedElemAggr);
+		int membercount = sdaiGetMemberCount(relatedElemAggr);
+		
+		for (int j = 0; j < membercount; j++)
+		{
+			long long instance;
+			engiGetAggrElement(relatedElemAggr, j, sdaiINSTANCE, &instance);
+			std::string elemtype = engiGetInstanceClassInfoUC(instance);
+			if (elemtype != "IFCCOLUMN")continue;
+			std::wstring matname;
+			matname = getMatName(instance);
+			int matno;
+			if (vmat_.find(matname) == vmat_.end())
+			{
+				int n = vmat_.size();
+				matno = n + 1;
+				vmat_[matname] = matno;
+			}
+			else
+				matno = vmat_[matname];
+
+			std::wstring sectname;
+			sectname = getSectName(instance);
+			int sectno;
+			if (vsect_.find(sectname) == vsect_.end())
+			{
+				int n = vsect_.size();
+				sectno = n + 1;
+				vsect_[sectname] = sectno;
+			}
+			else
+				sectno = vsect_[sectname];
+
+			std::vector<double> coord;
+			coord = getColumnCoordinates(instance);
+			coord[2] += round(elevation2);
+			std::vector<double> node1, node2;
+			//for (auto itr : vnode_)
+			//{
+			//	if (equalThick(itr.first, coord))
+			//	{
+			//		node2 = itr.first;
+			//		node1 = node2;
+			//		node1[2] = round(elevation1);
+			//		break;
+			//	}
+			//}
+			//
+
+			for (auto itr : vcross_)
+			{
+				if (equalThick(itr, coord))
+				{
+					node2 = itr;
+					node1 = node2;
+					node1[2] = round(elevation1);
+					break;
+				}
+			}
+
+			//当楼层为第0层时，添加底层节点
+			if ((i==0||i==1)&&node1.size()>0)
+			{
+				if (vnode_.find(node1) == vnode_.end())
+				{
+					int n = vnode_.size() + 1;
+					vnode_[node1] = n;
+				}
+			}
+			if (node1.size() > 0)
+			{
+				Element elem;
+				elem.matNum = matno;
+				elem.sectNum = sectno;
+				elem.node1 = node1;
+				elem.node2 = node2;
+				velem_.push_back(elem);
+			}
+		}
+	}
+
+
+	//写入fpmt
+	std::map<int, std::vector<double>> nodeTable;
+	for (auto itr : vnode_)
+		nodeTable[itr.second] = itr.first;
+	
+	for(int i=0;i<vmat_.size();i++)
+		fpmtwriter_.addLEMat(i+1);
+	for (int i = 0; i < vsect_.size(); i++)
+		fpmtwriter_.addRectSect(i+1);
+	for (auto itr : nodeTable)
+		fpmtwriter_.addNode(itr.first, itr.second[0]/1000.0, itr.second[1]/1000.0, itr.second[2]/1000.0);
+	int elemno = 1;
+	for (auto itr : velem_)
+		fpmtwriter_.addBeamElem(elemno++, vnode_[itr.node1], vnode_[itr.node2], itr.sectNum, itr.matNum);
 
 	fpmtwriter_.writeFpmt(outputpath_);
 }
@@ -540,7 +649,7 @@ std::vector<double> IFCTranslator::getColumnCoordinates(const long long& elemIns
 	engiGetAggrElement(coordAggr, 1, sdaiREAL, &y0);
 	engiGetAggrElement(coordAggr, 2, sdaiREAL, &z0);
 	//double len = getColumenLength(elemInstance);
-	return roundv({ x0,y0,0,x0,y0,0 });
+	return roundv({ x0,y0 ,0});
 }
 
 std::vector<double> IFCTranslator::getMat(const long long& elemInstance)
@@ -646,4 +755,83 @@ std::wstring IFCTranslator::getSectName(const long long& elemInstance)
 	wchar_t* objecttype;
 	sdaiGetAttrBN(elemInstance, "ObjectType", sdaiUNICODE, &objecttype);
 	return objecttype;
+}
+
+void IFCTranslator::splitBeams(std::vector<Element>& v)
+{
+	for(int i=0;i<v.size();i++)
+		splitBeam(v[i], v);
+}
+bool unique(std::pair<double, double> p1, std::pair<double, double> p2)
+{
+	if (abs(p1.first - p2.first) < ERRORDOUBLE && abs(p1.second - p2.second) < ERRORDOUBLE)
+		return true;
+	else
+		return false;
+}
+bool cmp(std::pair<double, double> p1, std::pair<double, double> p2)
+{
+	if (abs(p1.first - p2.first) < ERRORDOUBLE)
+		return p1.second < p2.second;
+
+	return p1.first < p2.first;
+}
+void IFCTranslator::splitBeam(Element& e, std::vector<Element> v)
+{
+	e.vcross.push_back({ e.node1[0],e.node1[1] });
+	e.vcross.push_back({ e.node2[0],e.node2[1] });
+	for (auto itr : v)
+	{
+		std::vector<double> crosspoint;
+		int n = e.vcross.size();
+		crosspoint = getCrossPoint(e,itr);
+		if (crosspoint.size() > 0)
+		{
+			e.vcross.push_back({ crosspoint[0],crosspoint[1] });
+		}
+	}
+
+	sort(e.vcross.begin(), e.vcross.end(),cmp);
+	auto new_end=unique(e.vcross.begin(), e.vcross.end(),unique);
+	e.vcross.erase(new_end, e.vcross.end());
+}
+void IFCTranslator::setBeams(const std::vector<Element>& velem)
+{
+	for (auto elem : velem)
+	{
+		for (int i = 0; i < elem.vcross.size() - 1; i++)
+		{
+			Element newelem;
+			newelem.matNum = elem.matNum;
+			newelem.sectNum = elem.sectNum;
+			newelem.node1 = { elem.vcross[i].first,elem.vcross[i].second,elem.node1[2] };
+			newelem.node2= { elem.vcross[i+1].first,elem.vcross[i+1].second,elem.node1[2] };
+			velem_.push_back(newelem);
+		}
+	}
+}
+void IFCTranslator::setNodeTableDouble()
+{
+
+}
+
+void IFCTranslator::setNodeTableThick()
+{
+	for (auto elem : velem_)
+	{
+		bool isFind = false;
+		std::vector<double> node1 = elem.node1;
+		if (vnode_.find(node1) == vnode_.end())
+		{
+			int n = vnode_.size() + 1;
+			vnode_.insert({ node1,n });
+		}
+
+		std::vector<double> node2 = elem.node2;
+		if (vnode_.find(node2) == vnode_.end())
+		{
+			int n = vnode_.size() + 1;
+			vnode_.insert({ node2,n });
+		}
+	}
 }

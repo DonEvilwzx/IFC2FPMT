@@ -1,13 +1,17 @@
 #pragma once
 #include"FpmtWriter.h"
 #include<map>
-#include<unordered_set>
+#include<set>
+#include<vector>
+#include <list>
+
 struct Element
 {
-	int nodeNum1;
-	int nodeNum2;
+	std::vector<double> node1;
+	std::vector<double> node2;
 	int sectNum;
 	int matNum;
+	std::vector<std::pair<double,double>> vcross;
 };
 class IFCTranslator
 {
@@ -20,14 +24,17 @@ public:
 private:
 	FpmtWriter fpmtwriter_;
 	wchar_t outputpath_[512];
-	std::map<std::wstring, int>  mSectTable;
-	std::map<std::wstring, int> mMatTable;
-	std::map<int, std::vector<double>> mNodeTable;
-	std::map<int, Element> mElemTable;
+	
+	std::map<std::wstring, int>  vsect_;
+	std::map<std::wstring, int> vmat_;
+	std::set<std::vector<double>> vcross_;
+//	std::map<int, Element> mElemTable;
 	int elemcount_ = 0;
-	std::map<std::vector<double>, int> vsect_;
-	std::map<std::vector<double>, int> vmat_;
+//	std::map<std::vector<double>, int> vsect_;
+//	std::map<std::vector<double>, int> vmat_;
 	std::map<std::vector<double>, int> vnode_;
+
+	std::vector<Element> velem_;
 	std::vector<double> getBeamRectSect(const long long& elemInstance);
 	std::vector<double> getColumnRectSect(const long long& elemInstance);
 	std::vector<double> getSect(const long long& elemInstance);
@@ -38,11 +45,85 @@ private:
 	double getBeamRealLength(const long long& elemInstance);
 	std::vector<double> getMat(const long long& elemInstance);
 	std::wstring getMatName(const long long& elemInstance);
-	void setBeam(const long long& ElemInstance);
-	void splitBeams(int elemNum,Element e);
-	void splitByNode(int splitnodeNum, int splitelemNum, Element splitElem);
+	std::vector<Element> getBeams(const long long& ElemInstance);
+	//void splitByNode(int splitnodeNum, int splitelemNum, Element splitElem);
 	std::vector<double> getCrossPoint(Element elem1, Element elem2);
+	void splitBeam(Element& e, std::vector<Element> v);
+	void splitBeams(std::vector<Element>& v);
+	void setBeams(const std::vector <Element>& velem);
+
+	void setNodeTableDouble();
+	void setNodeTableThick();
+
 	//double getColumenLength(const long long& elemInstance);
 	//double getH(const long long& elemInstance);
 	//void setElem2Fpmt(long long** aggr);
 };
+
+
+/*
+	交叉梁分割算法思路
+
+	struct Element
+	{
+		std::vector<double> node1;
+		std::vector<double> node2;
+		int matno;
+		int sectno;
+	}
+
+	set<Element> mXBeamSet;
+	set<Element> mYBeamSet;
+	set<Element> mColumnSet;
+
+	set<Element> mElement;
+	set<double> mXAxisSet;
+	set<double> mYAxisSet;
+
+	遍历每一个楼层:
+		遍历每一个单元	
+			if(梁单元)
+			{
+				getSect();
+				getMat();
+
+				coord= getCoord();
+				node1=..
+				node2=...
+				if(node1[0]==node2[0])  //水平
+				{
+					mXAxisSet.insert(node1[0]);
+					mXBeamSet.insert(Element)
+				}
+				else if(node1[1]==mode2[1])		//垂直
+				{
+					mYAxisSet.insert(node1[1]);
+					mYBeamSet.insert(Element)
+				}
+				else
+				{
+					AfxMessage("暂不支持非框架结构！")
+					exit(0);
+				}
+			}
+			else if(柱单元）
+			{
+				...
+			}
+		
+		for(auto beam:mXBeamSet)
+		{
+			for(auto itr:mYAxis)
+				splitXBeam(beam,);
+		}
+
+		for(auto beam:mYBeamSet)
+		{
+			splitYBeam(beam);
+		}
+
+		void splitXBeam(beam)
+		{
+			
+		}
+*/

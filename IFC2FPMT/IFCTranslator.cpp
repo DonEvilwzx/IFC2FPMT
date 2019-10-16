@@ -794,6 +794,15 @@ void IFCTranslator::splitBeam(Element& e, std::vector<Element> v)
 	sort(e.vcross.begin(), e.vcross.end(),cmp);
 	auto new_end=unique(e.vcross.begin(), e.vcross.end(),unique);
 	e.vcross.erase(new_end, e.vcross.end());
+	if (equalThick({ e.vcross[0].first,e.vcross[0].second }, { e.vcross[1].first,e.vcross[1].second }))
+	{
+		e.vcross.erase(e.vcross.begin()+1);
+	}
+	int n = e.vcross.size();
+	if (equalThick({ e.vcross[n - 1].first,e.vcross[n - 1].second }, { e.vcross[n - 2].first,e.vcross[n - 2].second }))
+	{
+		e.vcross.erase(e.vcross.begin() + n - 2);
+	}
 }
 void IFCTranslator::setBeams(const std::vector<Element>& velem)
 {

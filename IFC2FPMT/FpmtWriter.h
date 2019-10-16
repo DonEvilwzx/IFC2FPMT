@@ -19,7 +19,7 @@ public:
 	void addNode(int id, double x, double y, double z);
 	void addTrussElem(int id, int nn1, int nn2, int realno, int sectno, int matno);
 	void addBeamElem(int id, int nn1, int nn2, int sectno, int matno);
-	void writeFpmt(wchar_t* filename);
+	void writeFPMT(wchar_t* filename);
 	FpmtWriter();
 	~FpmtWriter();
 	//荷载、约束、加速度未添加

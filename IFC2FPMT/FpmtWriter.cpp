@@ -93,7 +93,7 @@ void FpmtWriter::addBeamElem(int id, int nn1, int nn2, int sectno, int matno)
 	oss << id << "," << "BEAM," << nn1 << "," << nn2 << "," << 0 << "," << sectno << "," << matno;
 	mListElem.push_back(oss.str());
 }
-void FpmtWriter::writeFpmt(wchar_t* filename)
+void FpmtWriter::writeFPMT(wchar_t* filename)
 {
 	std::ofstream outfile(filename);
 	outfile << "/MATERIAL/" << std::endl;

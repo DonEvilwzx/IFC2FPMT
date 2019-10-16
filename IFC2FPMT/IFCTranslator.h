@@ -7,11 +7,11 @@
 
 struct Element
 {
-	std::vector<double> node1;
-	std::vector<double> node2;
-	int sectNum;
-	int matNum;
-	std::vector<std::pair<double,double>> vcross;
+	std::vector<double> mNode1;
+	std::vector<double> mNode2;
+	int mSectNum;
+	int mMatNum;
+	std::vector<std::pair<double,double>> mElemCrossPoints;
 };
 class IFCTranslator
 {
@@ -22,19 +22,14 @@ public:
 	void setOutputpath(const CString& opath);
 	void test1();
 private:
-	FpmtWriter fpmtwriter_;
+	FpmtWriter mFPMTWriter;
 	wchar_t outputpath_[512];
 	
-	std::map<std::wstring, int>  vsect_;
-	std::map<std::wstring, int> vmat_;
-	std::set<std::vector<double>> vcross_;
-//	std::map<int, Element> mElemTable;
-	int elemcount_ = 0;
-//	std::map<std::vector<double>, int> vsect_;
-//	std::map<std::vector<double>, int> vmat_;
-	std::map<std::vector<double>, int> vnode_;
-
-	std::vector<Element> velem_;
+	std::map<std::wstring, int>  mSectTable;
+	std::map<std::wstring, int> mMatTable;
+	std::set<std::vector<double>> mCrossPoints;
+	std::map<std::vector<double>, int> mNodeTable;
+	std::vector<Element> mElems;
 	std::vector<double> getBeamRectSect(const long long& elemInstance);
 	std::vector<double> getColumnRectSect(const long long& elemInstance);
 	std::vector<double> getSect(const long long& elemInstance);
@@ -51,9 +46,6 @@ private:
 	void splitBeam(Element& e, std::vector<Element> v);
 	void splitBeams(std::vector<Element>& v);
 	void setBeams(const std::vector <Element>& velem);
-
-	void setNodeTableDouble();
-	void setNodeTableThick();
 
 	//double getColumenLength(const long long& elemInstance);
 	//double getH(const long long& elemInstance);

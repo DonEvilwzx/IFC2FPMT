@@ -7,6 +7,7 @@
 #include "ifcengine/include/engine.h"
 #include "ifcengine/include/ifcengine.h"
 
+using namespace std;
 const double ERRORTHICK = 800;
 const double ERRORDOUBLE = 1;
 
@@ -36,12 +37,13 @@ bool equalThick(std::vector<double> v1, std::vector<double> v2)
 	int n = v2.size();
 	for (int i = 0; i < n; i++)
 	{
-		if (v1[i] - v2[i] > ERRORTHICK||v1[i]-v2[i]<-ERRORTHICK)return false;
+		if (v1[i] - v2[i] > ERRORTHICK || v1[i] - v2[i] < -ERRORTHICK)return false;
 	}
 	return true;
+
 }
 
-std::vector<double> IFCTranslator::getCrossPoint(Element elem1, Element elem2)
+std::vector<double> IFCTranslator::getCrossPoint(BeamElement elem1, BeamElement elem2)
 {
 	std::vector<double> e1n1 = elem1.mNode1;
 	std::vector<double> e1n2 = elem1.mNode2;
@@ -93,156 +95,269 @@ std::vector<double> IFCTranslator::getCrossPoint(Element elem1, Element elem2)
 
 void IFCTranslator::test1()
 {
-	std::basic_string<wchar_t> ifcSchemaName_IFC2x3 = L"IFC2X3_TC1.exp";
 	setOutputpath(_T("output.fpmt"));
+	//std::basic_string<wchar_t> ifcSchemaName_IFC2x3 = L"IFC2X3_TC1.exp";
 	//CString m_path = _T("10层框架.ifc");
 	//CString m_path = _T("安中大楼.ifc");
-	CString m_path = _T("教学楼项目.ifc");
+	//CString m_path = _T("教学楼项目.ifc");
 	//CString m_path = _T("15#梁柱.0001.ifc");
 	//CString m_path = _T("小高层商住楼.0001.ifc");
 	//CString m_path = _T("03IDC.ifc");
-	translate(m_path, ifcSchemaName_IFC2x3);
+	//translate(m_path, ifcSchemaName_IFC2x3);
+
+	std::basic_string<wchar_t> ifcSchemaName_IFC4_2 = L"IFC4_ADD2.exp";
+	CString m_path = _T("CSGprimitive.ifc");
+	translateNewVersion(m_path, ifcSchemaName_IFC4_2);
 }
 
-//
-//void IFCTranslator::splitBeam(Element e,const std::vector<Element>& v)
-//{
-//	std::vector<double> crosspoint;
-//	int elemNum2=0;
-//	Element e2;
-//	for (auto itr : mElemTable)
-//	{
-//		if (itr.first == elemNum)continue;
-//		crosspoint = getCrossPoint(e, itr.second);
-//		if (crosspoint.size() > 0)
-//		{
-//			elemNum2 = itr.first;
-//			e2 = itr.second;
-//			/*两个单元不相交或者两个单元端点相交*/
-//			if (crosspoint.empty() || (equalDouble(mNodeTable[e.nodeNum1], crosspoint) || equalDouble(mNodeTable[e.nodeNum2], crosspoint)
-//				&& equalDouble(mNodeTable[e2.nodeNum1], crosspoint) || equalDouble(mNodeTable[e2.nodeNum2], crosspoint)))continue;
-//			/*两个单元相交生成4个单元的情况*/
-//			else if (!(equalThick(mNodeTable[e.nodeNum1], crosspoint) && !equalThick(mNodeTable[e.nodeNum2], crosspoint)
-//				&& !equalThick(mNodeTable[e2.nodeNum1], crosspoint) && !equalThick(mNodeTable[e2.nodeNum2], crosspoint)))
-//			{
-//				int newnodeNum = mNodeTable.size() + 1;
-//				mNodeTable[newnodeNum] = crosspoint;
-//				splitByNode(newnodeNum, elemNum, e);
-//				splitByNode(newnodeNum, elemNum2, e2);
-//			}
-//			/*两个单元相交生成3个单元的情况*/
-//			else
-//			{
-//				int splitnodeNum;	//交点编号
-//				int splitelemNum;	//被分割单元编号
-//				Element splitElem;	//被分割单元
-//				if (equalThick(mNodeTable[e.nodeNum1], crosspoint))
-//				{
-//					splitnodeNum = e.nodeNum1;
-//					splitElem = e2;
-//					splitelemNum = elemNum2;
-//				}
-//				else if (equalThick(mNodeTable[e.nodeNum2], crosspoint))
-//				{
-//					splitnodeNum = e.nodeNum2;
-//					splitElem = e2;
-//					splitelemNum = elemNum2;
-//				}
-//				else if (equalThick(mNodeTable[e2.nodeNum1], crosspoint))
-//				{
-//					splitnodeNum = e2.nodeNum1;
-//					splitElem = e;
-//					splitelemNum = elemNum;
-//				}
-//				else
-//				{
-//					splitnodeNum = e2.nodeNum2;
-//					splitElem = e;
-//					splitelemNum = elemNum;
-//				}
-//				//消除梁厚度影响
-//				mNodeTable[splitnodeNum] = crosspoint;
-//				splitByNode(splitnodeNum, splitelemNum, splitElem);
-//			}
-//		}
-//	}
-//
-//}
-//
-//void IFCTranslator::splitByNode(int splitnodeNum, int splitelemNum, Element splitElem)
-//{
-//	Element newelem;		//新单元
-//	newelem.nodeNum1 = splitnodeNum;
-//	newelem.nodeNum2 = splitElem.nodeNum2;
-//	newelem.matNum = splitElem.matNum;
-//	newelem.sectNum = splitElem.sectNum;
-//	int newElemNum = mElemTable.size()+1;
-//	mElemTable[newElemNum] = newelem;
-//	mElemTable[splitelemNum].nodeNum2 = splitnodeNum;
-//}
-
-std::vector<Element> IFCTranslator::getBeams(const long long& bsInstance)
+int IFCTranslator::numberMatTable(std::wstring matname)
 {
-	double elevation;
-	sdaiGetAttrBN(bsInstance, "Elevation", sdaiREAL, &elevation);
-	long long* containElemAggr;
-	sdaiGetAttrBN(bsInstance, "ContainsElements", sdaiAGGR, &containElemAggr);
-	long long containElemInstance;
-	engiGetAggrElement(containElemAggr, 0, sdaiINSTANCE, &containElemInstance);
-	long long* relatedElemAggr;
-	sdaiGetAttrBN(containElemInstance, "RelatedElements", sdaiAGGR, &relatedElemAggr);
-	int count = sdaiGetMemberCount(relatedElemAggr);
-	std::vector<Element> rev;
-	for (int i = 0; i < count; i++)
+	int matno;
+	if (mMatTable.find(matname) == mMatTable.end())
 	{
-		long long instance;
-		engiGetAggrElement(relatedElemAggr, i, sdaiINSTANCE, &instance);
-		std::string elemtype = engiGetInstanceClassInfoUC(instance);
-		if (elemtype != "IFCBEAM")continue;
-		std::wstring matname;
-		matname = getMatName(instance);
-		int matno;
-		if (mMatTable.find(matname) == mMatTable.end())
-		{
-			int n = mMatTable.size();
-			matno = n + 1;
-			mMatTable[matname] = matno;
-		}
-		else
-			matno = mMatTable[matname];
-
-		std::wstring sectname;
-		sectname = getSectName(instance);
-		int sectno;
-		if (mSectTable.find(sectname) == mSectTable.end())
-		{
-			int n = mSectTable.size();
-			sectno = n + 1;
-			mSectTable[sectname] = sectno;
-		}
-		else
-			sectno = mSectTable[sectname];
-
-		std::vector<double> coord;
-		coord = getBeamCoordinates(instance);
-		coord[2] += round(elevation);
-		coord[5] += round(elevation);
-
-		std::vector<double> node1 = { coord[0],coord[1],coord[2] };
-		std::vector<double> node2 = { coord[3],coord[4],coord[5] };
-
-		Element elem;
-		elem.mMatNum = matno;
-		elem.mSectNum = sectno;
-		elem.mNode1 = node1;
-		elem.mNode2 = node2;
-		rev.push_back(elem);
+		int n = mMatTable.size();
+		matno = n + 1;
+		mMatTable[matname] = matno;
 	}
-	splitBeams(rev);
-	return rev;
+	else
+		matno = mMatTable[matname];
+	return matno;
 }
 
-void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName)
+
+int IFCTranslator::numberSectTable(std::vector<double> vsect)
+{
+	int sectno;
+	if (mSectTable.find(vsect) == mSectTable.end())
+	{
+		int n = mSectTable.size();
+		sectno = n + 1;
+		mSectTable[vsect] = sectno;
+	}
+	else
+		sectno = mSectTable[vsect];
+	return sectno;
+}
+
+int IFCTranslator::numberNodeTable(std::vector<double> vnode)
+{
+	int nodeno;
+	if (mNodeTable.find(vnode) == mNodeTable.end())
+	{
+		int n = mNodeTable.size();
+		nodeno = n + 1;
+		mNodeTable[vnode] = nodeno;
+	}
+	else
+		nodeno = mNodeTable[vnode];
+	return nodeno;
+}
+void IFCTranslator::parseBuildingStorey(const long long& instance, std::vector<double> relativeCoord)
+{
+
+}
+
+
+void IFCTranslator::parseElement(const long long& instance, std::vector<double> relativeCoord)
+{
+	//获取材料名并录入到材料表
+	wstring matname = getMatName(instance);
+	int matno=numberMatTable(matname);
+	long long repreInstance;
+	sdaiGetAttrBN(instance, "Representation", sdaiINSTANCE, &repreInstance);
+	long long* repreAggr;
+	sdaiGetAttrBN(repreInstance, "Representations", sdaiAGGR, &repreAggr);
+	long long shaperepInstance;
+	engiGetAggrElement(repreAggr, 0, sdaiINSTANCE, &shaperepInstance);
+	long long* itemsAggr = nullptr;
+	sdaiGetAttrBN(shaperepInstance, "Items", sdaiAGGR, &itemsAggr);
+	int itemcnt = sdaiGetMemberCount(itemsAggr);
+	vector<double> localCoord = getCoordinate(instance);
+	for (int i = 0; i < itemcnt; i++)
+	{
+		long long itemInstance;
+		engiGetAggrElement(itemsAggr, i, sdaiINSTANCE, &itemInstance);
+		std::string  itemName = engiGetInstanceClassInfoUC(itemInstance);
+		//当实体为IfcCSGSolid实体时
+		if (itemName == "IFCCSGSOLID")
+		{
+			long long treeRootInstance;
+			sdaiGetAttrBN(itemInstance, "TreeRootExpression", sdaiINSTANCE, &treeRootInstance);
+			double xlength, ylength, zlength;
+			sdaiGetAttrBN(treeRootInstance, "XLength", sdaiREAL, &xlength);
+			sdaiGetAttrBN(treeRootInstance, "YLength", sdaiREAL, &ylength);
+			sdaiGetAttrBN(treeRootInstance, "ZLength", sdaiREAL, &zlength);
+			long long positionInstance;
+			sdaiGetAttrBN(treeRootInstance, "Position", sdaiINSTANCE, &positionInstance);
+			vector<double> SolidCoord = getCoordFromLocation(positionInstance);
+			double x1 = relativeCoord[0] + localCoord[0] + SolidCoord[0];
+			double y1 = relativeCoord[1] + localCoord[1] + SolidCoord[1];
+			double z1 = relativeCoord[2] + localCoord[2] + SolidCoord[2];
+
+			//长方体共8个顶点，最少可分割为5个四面体单元
+			vector<double> node1 = { x1,y1,z1 };
+			vector<double> node2 = { x1 + xlength,y1,z1 };
+			vector<double> node3 = { x1,y1 + ylength,z1 };
+			vector<double> node4 = { x1 + xlength,y1 + ylength,z1 };
+
+			vector<double> node5 = { x1,y1,z1 + zlength };
+			vector<double> node6 = { x1 + xlength,y1,z1 + zlength };
+			vector<double> node7 = { x1,y1 + ylength,z1 + zlength };
+			vector<double> node8 = { x1 + xlength,y1 + ylength,z1 + zlength };
+
+			//将节点录入到节点表格
+			int no1 = numberNodeTable(node1);
+			int no2 = numberNodeTable(node2);
+			int no3 = numberNodeTable(node3);
+			int no4 = numberNodeTable(node4);
+			int no5 = numberNodeTable(node5);
+			int no6 = numberNodeTable(node6);
+			int no7 = numberNodeTable(node7);
+			int no8 = numberNodeTable(node8);
+			
+
+			//将长方体分割成5个四面体单元
+			SolidElement elem1;
+			elem1.mMatNum = matno;
+			elem1.mNode1 = no1;
+			elem1.mNode2 = no2;
+			elem1.mNode3 = no3;
+			elem1.mNode4 = no5;
+			mSolidElems.push_back(elem1);
+
+			SolidElement elem2;
+			elem2.mMatNum = matno;
+			elem2.mNode1 = no2;
+			elem2.mNode2 = no3;
+			elem2.mNode3 = no4;
+			elem2.mNode4 = no8;
+			mSolidElems.push_back(elem2);
+
+			SolidElement elem3;
+			elem3.mMatNum = matno;
+			elem3.mNode1 = no5;
+			elem3.mNode2 = no6;
+			elem3.mNode3 = no8;
+			elem3.mNode4 = no2;
+			mSolidElems.push_back(elem3);
+
+			SolidElement elem4;
+			elem4.mMatNum = matno;
+			elem4.mNode1 = no5;
+			elem4.mNode2 = no7;
+			elem4.mNode3 = no8;
+			elem4.mNode4 = no3;
+			mSolidElems.push_back(elem4);
+
+			SolidElement elem5;
+			elem5.mMatNum = matno;
+			elem5.mNode1 = no2;
+			elem5.mNode2 = no3;
+			elem5.mNode3 = no5;
+			elem5.mNode4 = no8;
+			mSolidElems.push_back(elem5);
+		}
+	}
+}
+std::vector<double> IFCTranslator::getCoordFromLocation(const long long& instance)
+{
+	long long locInstance;
+	sdaiGetAttrBN(instance, "Location", sdaiINSTANCE, &locInstance);
+	long long* coordAggr = nullptr;
+	sdaiGetAttrBN(locInstance, "Coordinates", sdaiAGGR, &coordAggr);
+	double x0=0, y0=0, z0=0;
+	engiGetAggrElement(coordAggr, 0, sdaiREAL, &x0);
+	engiGetAggrElement(coordAggr, 1, sdaiREAL, &y0);
+	engiGetAggrElement(coordAggr, 2, sdaiREAL, &z0);
+	//double len = getColumenLength(elemInstance);
+	return roundv({ x0,y0 ,z0 });
+}
+
+std::vector<double> IFCTranslator::getCoordinate(const long long & instance)
+{
+	long long opInstance;
+	sdaiGetAttrBN(instance, "ObjectPlacement", sdaiINSTANCE, &opInstance);
+	long long rpInstance;
+	sdaiGetAttrBN(opInstance, "RelativePlacement", sdaiINSTANCE, &rpInstance);
+	long long locInstance;
+	sdaiGetAttrBN(rpInstance, "Location", sdaiINSTANCE, &locInstance);
+	long long* coordAggr = nullptr;
+	sdaiGetAttrBN(locInstance, "Coordinates", sdaiAGGR, &coordAggr);
+	double x0, y0, z0;
+	engiGetAggrElement(coordAggr, 0, sdaiREAL, &x0);
+	engiGetAggrElement(coordAggr, 1, sdaiREAL, &y0);
+	engiGetAggrElement(coordAggr, 2, sdaiREAL, &z0);
+	//double len = getColumenLength(elemInstance);
+	return roundv({ x0,y0 ,0 });
+}
+
+void IFCTranslator::translateNewVersion(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName)
+{
+	wchar_t fileName[512];
+	memcpy(fileName, ifcFileName, ifcFileName.GetLength() * sizeof(wchar_t));
+	fileName[ifcFileName.GetLength()] = 0;
+	long long model = 0;
+	model = sdaiOpenModelBNUnicode(0, (char*)fileName, (char*)ifcSchemaName.c_str());
+	long long* buildingAggr = sdaiGetEntityExtentBN(model, "IFCBUILDING");
+	int buildingcnt = sdaiGetMemberCount(buildingAggr);
+	for (int i = 0; i < buildingcnt; i++)
+	{
+		long long buidingInstance;
+		engiGetAggrElement(buildingAggr, i, sdaiINSTANCE, &buidingInstance);
+		vector<double> coord = getCoordinate(buidingInstance);
+		long long* containElemAggr;
+		sdaiGetAttrBN(buidingInstance, "ContainsElements", sdaiAGGR, &containElemAggr);
+		long long containElemInstance;
+		engiGetAggrElement(containElemAggr, 0, sdaiINSTANCE, &containElemInstance);
+		long long* relatedElemAggr;
+		sdaiGetAttrBN(containElemInstance, "RelatedElements", sdaiAGGR, &relatedElemAggr);
+		int count = sdaiGetMemberCount(relatedElemAggr);
+		for (int i = 0; i < count; i++)
+		{
+			long long instance;
+			engiGetAggrElement(relatedElemAggr, i, sdaiINSTANCE, &instance);
+			string elemtype = engiGetInstanceClassInfoUC(instance);
+			if (elemtype == "IFCBUILDINGSTOREY")
+				parseBuildingStorey(instance, coord);
+			else if (elemtype == "IFCBUILDINGELEMENTPROXY")
+				parseElement(instance, coord);
+		}
+	}
+	writeFPMT();
+
+}
+
+void IFCTranslator::writeFPMT()
+{
+	//建立新表，使键值为编号，属性值对应材料、截面、坐标参数，以使得编号值能够得到排序
+	map<int, std::vector<double>> nodeTable;
+	map<int, std::vector<double>> sectTable;
+	map<int, std::wstring> matTable;
+	for (auto itr : mNodeTable)
+		nodeTable[itr.second] = itr.first;
+	for (auto itr : mMatTable)
+		matTable[itr.second] = itr.first;
+	for (auto itr : mSectTable)
+		sectTable[itr.second] = itr.first;
+
+	for (auto itr : matTable)
+		mFPMTWriter.addLEMat(itr.first);
+	for (auto itr : sectTable)
+	{
+		if (itr.second.size() == 2)
+			mFPMTWriter.addRectSect(itr.first, itr.second[0], itr.second[1]);
+	}
+	for (auto itr : nodeTable)
+		mFPMTWriter.addNode(itr.first, itr.second[0] / 1000.0, itr.second[1] / 1000.0, itr.second[2] / 1000.0);
+	int elemno = 1;
+	for (auto itr : mBeamElems)
+		mFPMTWriter.addBeamElem(elemno++, mNodeTable[itr.mNode1], mNodeTable[itr.mNode2], itr.mSectNum, itr.mMatNum);
+
+	for (auto itr : mSolidElems)
+		mFPMTWriter.addSolidElem(elemno++, itr.mNode1, itr.mNode2, itr.mNode3, itr.mNode4, itr.mMatNum);
+	mFPMTWriter.writeFPMT(outputpath_);
+}
+void IFCTranslator::translateOldVersion(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName)
 {
 	wchar_t fileName[512];
 	memcpy(fileName, ifcFileName, ifcFileName.GetLength() * sizeof(wchar_t));
@@ -250,19 +365,23 @@ void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> if
 	long long model = 0;
 	model = sdaiOpenModelBNUnicode(0, (char*)fileName, (char*)ifcSchemaName.c_str());
 	long long* buildingstoreyAggr = sdaiGetEntityExtentBN(model, "IFCBUILDINGSTOREY");
-	int bscnt= sdaiGetMemberCount(buildingstoreyAggr);
-	
+	long long* beamAggr = sdaiGetEntityExtentBN(model, "IFCBEAM");
+	long long* columnAggr = sdaiGetEntityExtentBN(model, "IFCCOLUMN");
+	int beamcnt = sdaiGetMemberCount(beamAggr);
+	int cocnt = sdaiGetMemberCount(columnAggr);
+	int bscnt = sdaiGetMemberCount(buildingstoreyAggr);
+
 	//梁
 	for (int i = 0; i < bscnt; i++)
 	{
 		long long bsInstance;
-		engiGetAggrElement(buildingstoreyAggr,i,sdaiINSTANCE,&bsInstance);
-		std::vector<Element> vbeam= getBeams(bsInstance);
+		engiGetAggrElement(buildingstoreyAggr, i, sdaiINSTANCE, &bsInstance);
+		std::vector<BeamElement> vbeam = getBeams(bsInstance);
 		setBeams(vbeam);
 	}
 
 	//根据梁单元对节点编号
-	for (auto elem : mElems)
+	for (auto elem : mBeamElems)
 	{
 		std::vector<double> node1 = elem.mNode1;
 		if (mNodeTable.find(node1) == mNodeTable.end())
@@ -281,13 +400,13 @@ void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> if
 
 
 	//柱
-	for (int i = 0; i < bscnt-1; i++)
+	for (int i = 0; i < bscnt - 1; i++)
 	{
 		long long bsInstance1;
 		long long bsInstance2;
 		engiGetAggrElement(buildingstoreyAggr, i, sdaiINSTANCE, &bsInstance1);
-		engiGetAggrElement(buildingstoreyAggr, i+1, sdaiINSTANCE, &bsInstance2);
-		double elevation1,elevation2;
+		engiGetAggrElement(buildingstoreyAggr, i + 1, sdaiINSTANCE, &bsInstance2);
+		double elevation1, elevation2;
 		sdaiGetAttrBN(bsInstance1, "Elevation", sdaiREAL, &elevation1);
 		sdaiGetAttrBN(bsInstance2, "Elevation", sdaiREAL, &elevation2);
 		long long* containElemAggr;
@@ -297,7 +416,7 @@ void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> if
 		long long* relatedElemAggr;
 		sdaiGetAttrBN(containElemInstance, "RelatedElements", sdaiAGGR, &relatedElemAggr);
 		int membercount = sdaiGetMemberCount(relatedElemAggr);
-		
+
 		for (int j = 0; j < membercount; j++)
 		{
 			long long instance;
@@ -319,14 +438,14 @@ void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> if
 			std::wstring sectname;
 			sectname = getSectName(instance);
 			int sectno;
-			if (mSectTable.find(sectname) == mSectTable.end())
+			if (mSectNameTable.find(sectname) == mSectNameTable.end())
 			{
-				int n = mSectTable.size();
+				int n = mSectNameTable.size();
 				sectno = n + 1;
-				mSectTable[sectname] = sectno;
+				mSectNameTable[sectname] = sectno;
 			}
 			else
-				sectno = mSectTable[sectname];
+				sectno = mSectNameTable[sectname];
 
 			std::vector<double> coord;
 			coord = getColumnCoordinates(instance);
@@ -356,7 +475,7 @@ void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> if
 			}
 
 			//当楼层为第0层时，添加底层节点
-			if ((i==0||i==1)&&node1.size()>0)
+			if ((i == 0 || i == 1) && node1.size() > 0)
 			{
 				if (mNodeTable.find(node1) == mNodeTable.end())
 				{
@@ -366,34 +485,84 @@ void IFCTranslator::translate(CString ifcFileName, std::basic_string<wchar_t> if
 			}
 			if (node1.size() > 0)
 			{
-				Element elem;
+				BeamElement elem;
 				elem.mMatNum = matno;
 				elem.mSectNum = sectno;
 				elem.mNode1 = node1;
 				elem.mNode2 = node2;
-				mElems.push_back(elem);
+				mBeamElems.push_back(elem);
 			}
 		}
 	}
 
 
-	//写入fpmt
-	std::map<int, std::vector<double>> nodeTable;
-	for (auto itr : mNodeTable)
-		nodeTable[itr.second] = itr.first;
-	
-	for(int i=0;i<mMatTable.size();i++)
-		mFPMTWriter.addLEMat(i+1);
-	for (int i = 0; i < mSectTable.size(); i++)
-		mFPMTWriter.addRectSect(i+1);
-	for (auto itr : nodeTable)
-		mFPMTWriter.addNode(itr.first, itr.second[0]/1000.0, itr.second[1]/1000.0, itr.second[2]/1000.0);
-	int elemno = 1;
-	for (auto itr : mElems)
-		mFPMTWriter.addBeamElem(elemno++, mNodeTable[itr.mNode1], mNodeTable[itr.mNode2], itr.mSectNum, itr.mMatNum);
 
-	mFPMTWriter.writeFPMT(outputpath_);
 }
+
+
+
+std::vector<BeamElement> IFCTranslator::getBeams(const long long& bsInstance)
+{
+	double elevation;
+	sdaiGetAttrBN(bsInstance, "Elevation", sdaiREAL, &elevation);
+	long long* containElemAggr;
+	sdaiGetAttrBN(bsInstance, "ContainsElements", sdaiAGGR, &containElemAggr);
+	long long containElemInstance;
+	engiGetAggrElement(containElemAggr, 0, sdaiINSTANCE, &containElemInstance);
+	long long* relatedElemAggr;
+	sdaiGetAttrBN(containElemInstance, "RelatedElements", sdaiAGGR, &relatedElemAggr);
+	int count = sdaiGetMemberCount(relatedElemAggr);
+	std::vector<BeamElement> rev;
+	for (int i = 0; i < count; i++)
+	{
+		long long instance;
+		engiGetAggrElement(relatedElemAggr, i, sdaiINSTANCE, &instance);
+		std::string elemtype = engiGetInstanceClassInfoUC(instance);
+		if (elemtype != "IFCBEAM")continue;
+		std::wstring matname;
+		matname = getMatName(instance);
+		int matno;
+		if (mMatTable.find(matname) == mMatTable.end())
+		{
+			int n = mMatTable.size();
+			matno = n + 1;
+			mMatTable[matname] = matno;
+		}
+		else
+			matno = mMatTable[matname];
+
+		std::wstring sectname;
+		sectname = getSectName(instance);
+		int sectno;
+		if (mSectNameTable.find(sectname) == mSectNameTable.end())
+		{
+			int n = mSectNameTable.size();
+			sectno = n + 1;
+			mSectNameTable[sectname] = sectno;
+		}
+		else
+			sectno = mSectNameTable[sectname];
+
+		std::vector<double> coord;
+		coord = getBeamCoordinates(instance);
+		coord[2] += round(elevation);
+		coord[5] += round(elevation);
+
+		std::vector<double> node1 = { coord[0],coord[1],coord[2] };
+		std::vector<double> node2 = { coord[3],coord[4],coord[5] };
+
+		BeamElement elem;
+		elem.mMatNum = matno;
+		elem.mSectNum = sectno;
+		elem.mNode1 = node1;
+		elem.mNode2 = node2;
+		rev.push_back(elem);
+	}
+	splitBeams(rev);
+	return rev;
+}
+
+
 
 std::vector<double> IFCTranslator::getBeamRectSect(const long long& elemInstance)
 {
@@ -631,7 +800,7 @@ std::vector<double> IFCTranslator::getBeamCoordinates(const long long& elemInsta
 		engiGetAggrElement(drAggr, 2, sdaiREAL, &vd[2]);
 	}
 	double len = getBeamCalcuLength(elemInstance);
-//	double h = getH(elemInstance);
+	//	double h = getH(elemInstance);
 	return roundv({ x0,y0, 0,x0 + len * vd[0],y0 + len * vd[1], len * vd[2] });
 }
 
@@ -650,86 +819,10 @@ std::vector<double> IFCTranslator::getColumnCoordinates(const long long& elemIns
 	engiGetAggrElement(coordAggr, 1, sdaiREAL, &y0);
 	engiGetAggrElement(coordAggr, 2, sdaiREAL, &z0);
 	//double len = getColumenLength(elemInstance);
-	return roundv({ x0,y0 ,0});
+	return roundv({ x0,y0 ,0 });
 }
 
-std::vector<double> IFCTranslator::getMat(const long long& elemInstance)
-{
-	long long* associationAggr = nullptr;
-	sdaiGetAttrBN(elemInstance, "HasAssociations", sdaiAGGR, &associationAggr);
-	long long associationInstance;
-	engiGetAggrElement(associationAggr, 0, sdaiINSTANCE, &associationInstance);
-	long long relatingMaterialInstance;
-	sdaiGetAttrBN(associationInstance, "RelatingMaterial", sdaiINSTANCE, &relatingMaterialInstance);
-	if(relatingMaterialInstance<0)
-		return  { 7850,2.06e11,0.3 };
-	wchar_t* matname=0;
-	sdaiGetAttrBN(relatingMaterialInstance, "Name", sdaiUNICODE, &matname);
-	std::vector<double> mat = { 7850,2.06e11,0.3 };
-	if (wcsstr(matname, L"混凝土") || StrStrIW(matname, L"concrete"))
-	{
-		mat[0] = 2500;
-		if (wcsstr(matname, L"25"))
-			mat[1] = 2.2e10;
-		else if (wcsstr(matname, L"35"))
-			mat[1] = 2.55e10;
-		else if (wcsstr(matname, L"30"))
-			mat[1] = 2.8e10;
-		else if (wcsstr(matname, L"35"))
-			mat[1] = 3.0e10;
-		else if (wcsstr(matname, L"40"))
-			mat[1] = 3.25e10;
-		else if (wcsstr(matname, L"45"))
-			mat[1] = 3.35e10;
-		else if (wcsstr(matname, L"50"))
-			mat[1] = 3.45e10;
-		else if (wcsstr(matname, L"55"))
-			mat[1] = 3.55e10;
-		else if (wcsstr(matname, L"60"))
-			mat[1] = 3.6e10;
-		else if (wcsstr(matname, L"65"))
-			mat[1] = 3.65e10;
-		else if (wcsstr(matname, L"70"))
-			mat[1] = 3.70e10;
-		else if (wcsstr(matname, L"75"))
-			mat[1] = 3.75e10;
-		else if (wcsstr(matname, L"80"))
-			mat[1] = 3.80e10;
-		else 
-			mat[1]= 3.25e10;
-	}
-	return mat;
-}
-std::vector<double> IFCTranslator::getSect(const long long& elemInstance)
-{
-	wchar_t* objecttype;	
-	sdaiGetAttrBN(elemInstance, "ObjectType", sdaiUNICODE, &objecttype);
-	std::wstring s(objecttype);
-	int index = s.find('x');
-	if (index < 0)
-		index = s.find('*');
-	int temp = index;
-	int start1, end1,start2,end2;
-	index--;
-	while(s[index]==L' ')
-		index--;
-	end1 = index;
-	while (index>=0&& s[index] >= L'0' && s[index] <= L'9')
-	{
-		index--;
-	}
-	start1 = index + 1;
-	index = temp+1;
-	while (s[index] == L' ')
-		index++;
-	start2 = index;
-	while (index<s.size()&&s[index] >= L'0' && s[index] <= L'9')
-		index++;
-	end2 = index - 1;
-	double xdim = stoi(s.substr(start1, end1 - start1 + 1));
-	double ydim = stoi(s.substr(start2,end2-start2+1));
-	return { xdim ,ydim };
-}
+
 void IFCTranslator::setOutputpath(const CString& opath)
 {
 	memcpy(outputpath_, opath, opath.GetLength() * sizeof(wchar_t));
@@ -758,9 +851,9 @@ std::wstring IFCTranslator::getSectName(const long long& elemInstance)
 	return objecttype;
 }
 
-void IFCTranslator::splitBeams(std::vector<Element>& v)
+void IFCTranslator::splitBeams(std::vector<BeamElement>& v)
 {
-	for(int i=0;i<v.size();i++)
+	for (int i = 0; i < v.size(); i++)
 		splitBeam(v[i], v);
 }
 bool unique(std::pair<double, double> p1, std::pair<double, double> p2)
@@ -777,7 +870,7 @@ bool cmp(std::pair<double, double> p1, std::pair<double, double> p2)
 
 	return p1.first < p2.first;
 }
-void IFCTranslator::splitBeam(Element& e, std::vector<Element> v)
+void IFCTranslator::splitBeam(BeamElement& e, std::vector<BeamElement> v)
 {
 	e.mElemCrossPoints.push_back({ e.mNode1[0],e.mNode1[1] });
 	e.mElemCrossPoints.push_back({ e.mNode2[0],e.mNode2[1] });
@@ -785,19 +878,19 @@ void IFCTranslator::splitBeam(Element& e, std::vector<Element> v)
 	{
 		std::vector<double> crosspoint;
 		int n = e.mElemCrossPoints.size();
-		crosspoint = getCrossPoint(e,itr);
+		crosspoint = getCrossPoint(e, itr);
 		if (crosspoint.size() > 0)
 		{
 			e.mElemCrossPoints.push_back({ crosspoint[0],crosspoint[1] });
 		}
 	}
 
-	sort(e.mElemCrossPoints.begin(), e.mElemCrossPoints.end(),cmp);
-	auto new_end=unique(e.mElemCrossPoints.begin(), e.mElemCrossPoints.end(),unique);
+	sort(e.mElemCrossPoints.begin(), e.mElemCrossPoints.end(), cmp);
+	auto new_end = unique(e.mElemCrossPoints.begin(), e.mElemCrossPoints.end(), unique);
 	e.mElemCrossPoints.erase(new_end, e.mElemCrossPoints.end());
 	if (equalThick({ e.mElemCrossPoints[0].first,e.mElemCrossPoints[0].second }, { e.mElemCrossPoints[1].first,e.mElemCrossPoints[1].second }))
 	{
-		e.mElemCrossPoints.erase(e.mElemCrossPoints.begin()+1);
+		e.mElemCrossPoints.erase(e.mElemCrossPoints.begin() + 1);
 	}
 	int n = e.mElemCrossPoints.size();
 	if (equalThick({ e.mElemCrossPoints[n - 1].first,e.mElemCrossPoints[n - 1].second }, { e.mElemCrossPoints[n - 2].first,e.mElemCrossPoints[n - 2].second }))
@@ -805,18 +898,18 @@ void IFCTranslator::splitBeam(Element& e, std::vector<Element> v)
 		e.mElemCrossPoints.erase(e.mElemCrossPoints.begin() + n - 2);
 	}
 }
-void IFCTranslator::setBeams(const std::vector<Element>& velem)
+void IFCTranslator::setBeams(const std::vector<BeamElement>& velem)
 {
 	for (auto elem : velem)
 	{
 		for (int i = 0; i < elem.mElemCrossPoints.size() - 1; i++)
 		{
-			Element newelem;
+			BeamElement newelem;
 			newelem.mMatNum = elem.mMatNum;
 			newelem.mSectNum = elem.mSectNum;
 			newelem.mNode1 = { elem.mElemCrossPoints[i].first,elem.mElemCrossPoints[i].second,elem.mNode1[2] };
-			newelem.mNode2= { elem.mElemCrossPoints[i+1].first,elem.mElemCrossPoints[i+1].second,elem.mNode1[2] };
-			mElems.push_back(newelem);
+			newelem.mNode2 = { elem.mElemCrossPoints[i + 1].first,elem.mElemCrossPoints[i + 1].second,elem.mNode1[2] };
+			mBeamElems.push_back(newelem);
 		}
 	}
 }

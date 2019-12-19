@@ -23,11 +23,15 @@ public:
 	void writeFPMT(wchar_t* filename);
 	FpmtWriter();
 	~FpmtWriter();
-	//荷载、约束、加速度未添加
 private:
+	//材料字符串表
 	std::list <std::string> mListMat;
+	//截面字符串表
 	std::list <std::string> mListSect;
+	//实数字符串表
 	std::list<std::string> mListReal;
+	//节点字符串表
 	std::list<std::string> mListNode;
+	//单元字符串表
 	std::list<std::string> mListElem;
 };

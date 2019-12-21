@@ -4,7 +4,8 @@
 #include<set>
 #include<vector>
 #include <list>
-
+#include<Eigen/Dense>
+#include<Eigen/Cholesky>
 struct Beam
 {
 	int mNode1;
@@ -29,10 +30,10 @@ struct Solid
 	int mMatNum;
 };
 
-struct Shell
-{
-
-};
+//struct Shell
+//{
+//
+//};
 class IFCTranslator
 {
 public:
@@ -44,17 +45,22 @@ protected:
 	//void translateOldVersion(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName);
 	void translateNewVersion(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName);
 
+	void parseSite(const long long& siteInstance);
+	void parseBuilding(const long long& buildingInstance, Eigen::Matrix4d relativeTMatrix);
 	// 将材料名录入材料表，并对其建立索引，进行编号，返回编号值。
 	int recordMatTable(std::wstring matname);
 
 	// 将截面名录入截面表，并对其建立索引，进行编号，返回编号值。
-	//int recordSectTable(std::vector<int> vsect);
+	//int recordSectTable(std::vector<double> vsect);
 
+	std::vector<long long> getInstancesByAggr(long long* aggr);
 
+	std::vector<long long> getInstancesByInstance(long long instance, char* name);
 	int recordSectTable(std::wstring sectname);
 	//将节点坐标录入节点表，并对其建立索引，进行编号，返回编号值
 	int recordNodeTable(std::vector<int> vnode);
 
+	int recordNodeTableByVector(Eigen::Vector4d v);
 	//录入梁单元表
 	void recordBeamElement(int n1,int n2,int matno,int sectno);
 
@@ -64,46 +70,48 @@ protected:
 	//直接输入8个点录入5个实体单元
 	void record5SolidElement(int no1,int no2,int no3,int no4,int no5,int no6,int no7,int no8, int matno);
 
-	// 解析构件
-	void parseElement(const long long& instance, std::vector<int> relativeCoord,bool isBeam);
+	// 解析构件,第二个参数为父坐标系的原点，第3个参数为父坐标系的方向矩阵
+	void parseElement(const long long& instance, Eigen::Matrix4d relativeTmatrix);
 
 
-	void parseItems(long long* itemsAggr, int matno, std::vector<int> relativeCoord, std::vector<double> direct);
+	void parseItems(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
 
 
-	//void parseSweptSolid(const long long& itemInstance, int matno, std::vector<int> relativeCoord,std::vector<double> direct);
+	//void parseSweptSolid(const long long& itemInstance, int matno, std::vector<double> relativeCoord,std::vector<double> direct);
 	// 解析楼层
-	void parseBuildingStorey(const long long& instance, std::vector<int> relativeCoord);
+	void parseBuildingStorey(const long long& instance, std::vector<double> relativeCoord);
 
 
 	//获取构件一个端点的三维坐标。
-	std::vector<int> getCoordinate(const long long& instance);
+	std::vector<double> getCoordinate(const long long& instance);
 
-	//获取构件的方向向量
-	std::vector<double> getDirect(const long long& instance);
+	//获取坐标旋转矩阵
+	//std::vector<std::vector<double>> getDirectMatrix(const long long& instance);
 	//输出FPMT文件
 	void writeFPMT();
 
 	//获取材料名
 	std::wstring getMatName(const long long& elemInstance);
 
-	//从Location句柄获取坐标
-	std::vector<int> getCoordFromLocation(const long long& locInstance);
+
+
 
 	//从CoordAggr获取坐标
-	std::vector<int> getCoordFromCoordAggr( long long*  coordAggr);
+	std::vector<double> getCoordByCoordAggr( long long*  coordAggr);
 
+	std::vector<double> getDirectVectorByDirectInstance(const long long& directInstance);
 
+	Eigen::Matrix<double, 4, 4> getTMatrixByInstance(const long long& instance);
 private:
 	FpmtWriter mFPMTWriter;
 	wchar_t outputpath_[512];
-	//std::map<std::vector<int>, int> mSectTable;
+	//std::map<std::vector<double>, int> mSectTable;
 	std::map<std::wstring, int> mSectNameTable;
 	std::map<std::wstring, int> mMatTable;
 	//std::set<std::vector<double>> mCrossPoints;
 	std::map<std::vector<int>, int> mNodeTable;
-	std::vector<Beam> mBeamElems;
-	std::vector<Solid> mSolidElems;
+	std::vector<Beam> mBeams;
+	std::vector<Solid> mSolids;
 	
 	//std::vector<double> getBeamRectSect(const long long& elemInstance);
 	//std::vector<double> getColumnRectSect(const long long& elemInstance);
@@ -118,6 +126,10 @@ private:
 	//void splitBeam(BeamElement& e, std::vector<BeamElement> v);
 	//void splitBeams(std::vector<BeamElement>& v);
 	//void setBeams(const std::vector <BeamElement>& velem);
+
+	
+	
+
 
 };
 

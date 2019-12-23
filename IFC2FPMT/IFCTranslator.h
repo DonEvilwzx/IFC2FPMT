@@ -47,6 +47,11 @@ protected:
 
 	void parseSite(const long long& siteInstance);
 	void parseBuilding(const long long& buildingInstance, Eigen::Matrix4d relativeTMatrix);
+	void parseBuildingStorey(const long long& instance, Eigen::Matrix4d relativeTmatrix);
+	void parseElement(const long long& instance, Eigen::Matrix4d relativeTmatrix);
+
+	//解析截面
+	void parseItems(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
 	// 将材料名录入材料表，并对其建立索引，进行编号，返回编号值。
 	int recordMatTable(std::wstring matname);
 
@@ -70,16 +75,11 @@ protected:
 	//直接输入8个点录入5个实体单元
 	void record5SolidElement(int no1,int no2,int no3,int no4,int no5,int no6,int no7,int no8, int matno);
 
-	// 解析构件,第二个参数为父坐标系的原点，第3个参数为父坐标系的方向矩阵
-	void parseElement(const long long& instance, Eigen::Matrix4d relativeTmatrix);
-
-
-	void parseItems(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
 
 
 	//void parseSweptSolid(const long long& itemInstance, int matno, std::vector<double> relativeCoord,std::vector<double> direct);
-	// 解析楼层
-	void parseBuildingStorey(const long long& instance, std::vector<double> relativeCoord);
+	
+
 
 
 	//获取构件一个端点的三维坐标。

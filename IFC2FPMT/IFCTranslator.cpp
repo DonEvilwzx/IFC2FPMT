@@ -105,6 +105,7 @@ vector<double> crossProduct(vector<double> v1, vector<double> v2)
 	rev[2] = v1[0] * v2[1] - v1[1] * v2[0];
 	return rev;
 }
+
 vector<double> vectorMulMatrix(vector<double> v, vector<vector<double>> m)
 {
 	vector<double> rev(3);
@@ -123,6 +124,21 @@ vector<double> MatrixMulVector(vector<double> v,vector<vector<double>> m)
 	return rev;
 }
 
+bool unique(std::pair<double, double> p1, std::pair<double, double> p2)
+{
+	if (abs(p1.first - p2.first) < ERRORDOUBLE && abs(p1.second - p2.second) < ERRORDOUBLE)
+		return true;
+	else
+		return false;
+}
+
+bool cmp(std::pair<double, double> p1, std::pair<double, double> p2)
+{
+	if (abs(p1.first - p2.first) < ERRORDOUBLE)
+		return p1.second < p2.second;
+
+	return p1.first < p2.first;
+}
 
 void IFCTranslator::test1()
 {
@@ -143,8 +159,8 @@ void IFCTranslator::test1()
 	//CString m_path = _T("BrepModel.ifc");
 	//CString m_path = _T("MappedModel.ifc");
 	//CString m_path = _T("MappedItemWithTrans.ifc");
-	CString m_path = _T("MappedMulti.ifc");
-	//CString m_path = _T("BeamStandard.ifc");
+	//CString m_path = _T("MappedMulti.ifc");
+	CString m_path = _T("BeamStandard.ifc");
 	translateNewVersion(m_path, ifcSchemaName_IFC4_2);
 }
 
@@ -211,10 +227,6 @@ int IFCTranslator::recordNodeTableByVector(Eigen::Vector4d v)
 	int y = (int)v(1);
 	int z = (int)v(2);
 	return recordNodeTable({ x,y,z });
-}
-void IFCTranslator::parseBuildingStorey(const long long& instance, std::vector<double> relativeCoord)
-{
-
 }
 
 void IFCTranslator::recordSolidElement(int n1, int n2, int n3,int n4,int matno)
@@ -329,6 +341,8 @@ void IFCTranslator::parseItems(const long long& itemInstance, int matno, Eigen::
 
 			Vector4d worldNode1 = relativeTmatrix*node1;
 			Vector4d worldNode2 = relativeTmatrix*node2;
+			//Vector4d worldNode1 = relativeTmatrix.ldlt().solve(node1);
+			//Vector4d worldNode2 = relativeTmatrix.ldlt().solve(node2);
 			int no1 = recordNodeTableByVector(worldNode1);
 			int no2 = recordNodeTableByVector(worldNode2);
 			recordBeamElement(no1, no2, matno, sectno);
@@ -442,8 +456,8 @@ void IFCTranslator::parseItems(const long long& itemInstance, int matno, Eigen::
 				0, 1, 0, 0,
 				0, 0, 1, 0,
 				0, 0, 0, 1;
-			vector<double> xdim = { 1,0,0 };
-			vector<double> ydim = { 0,1,0 };
+			//vector<double> xdim = { 1,0,0 };
+			//vector<double> ydim = { 0,1,0 };
 			vector<double> pan = { 0,0,0 };
 			long long mappingTargetInstance;
 			sdaiGetAttrBN(itemInstance, "MappingTarget", sdaiINSTANCE, &mappingTargetInstance);
@@ -467,15 +481,15 @@ void IFCTranslator::parseItems(const long long& itemInstance, int matno, Eigen::
 			//	sdaiGetAttrBN(axis1Instance, "DirectionRatios", sdaiAGGR, &ydimAggr);
 			//	ydim = getCoordByCoordAggr(ydimAggr);
 			//}
-			vector<double> zdim = crossProduct(xdim, ydim);
+			// vector<double> zdim = crossProduct(xdim, ydim);
 			for (int i = 0; i < 3; i++)
 			{
 				/*R(i, 0) = xdim[i];
 				R(i, 1) = ydim[i];
 				R(i, 2) = zdim[i];*/
-				R(0,i) = xdim[i];
+				/*R(0,i) = xdim[i];
 				R(1,i) = ydim[i];
-				R(2,i) = zdim[i];
+				R(2,i) = zdim[i];*/
 				D(i, 3) = pan[i];
 			}
 			Matrix4d localTmatrix=R*D;
@@ -489,13 +503,26 @@ void IFCTranslator::parseItems(const long long& itemInstance, int matno, Eigen::
 		}
 }
 
+void IFCTranslator::parseBuildingStorey(const long long& instance, Eigen::Matrix4d relativeTmatrix)
+{
+	Matrix4d localTmatrix = getTMatrixByInstance(instance);
+	long long* containElemAggr;
+	vector<long long> containElemInstances = getInstancesByInstance(instance, "ContainsElements");
+	for (auto containElemInstance : containElemInstances)
+	{
+		vector<long long> relatedInstances = getInstancesByInstance(containElemInstance, "RelatedElements");
+		for (auto instance : relatedInstances)
+		{
+			string elemtype = engiGetInstanceClassInfoUC(instance);
+			if (elemtype == "IFCBUILDINGELEMENTPROXY" || elemtype == "IFCCOLUMN" || elemtype == "IFCBEAMSTANDARDCASE" || elemtype == "IFCBEAM")
+				parseElement(instance, relativeTmatrix*localTmatrix);
+		}
+	}
+}
+
 void IFCTranslator::parseElement(const long long& instance, Eigen::Matrix4d relativeTmatrix)
 {
 
-	//vector<vector<double>> localDirect = getDirectMatrix(instance);
-	//获取构件端点坐标
-	//vector<double> localCoord = getCoordinate(instance);
-	
 	Matrix4d localTmatrix= getTMatrixByInstance(instance);
 	//获取材料名并录入到材料表
 	wstring matname = getMatName(instance);
@@ -511,45 +538,9 @@ void IFCTranslator::parseElement(const long long& instance, Eigen::Matrix4d rela
 	}
 }
 
-//void IFCTranslator::parseSweptSolid(const long long& itemInstance, int matno, std::vector<double> relativeCoord,std::vector<double> direct)
-//{
-//	double depth = 0;
-//	sdaiGetAttrBN(itemInstance, "Depth", sdaiREAL, &depth);
-//	long long sweptAreaInstance;
-//	sdaiGetAttrBN(itemInstance, "SweptArea", sdaiINSTANCE, &sweptAreaInstance);
-//
-//	std::string  areaName = engiGetInstanceClassInfoUC(sweptAreaInstance);
-//	if (areaName == "IFCRECTANGLEPROFILEDEF")
-//	{
-//		long long positionInstance;
-//		sdaiGetAttrBN(sweptAreaInstance, "Position", sdaiINSTANCE, &positionInstance);
-//		vector<double> AreaCoord = getCoordByLocation(positionInstance);
-//
-//		int x1 = relativeCoord[0]  + AreaCoord[0];
-//		int y1 = relativeCoord[1]  + AreaCoord[1];
-//		int z1 = relativeCoord[2]  + AreaCoord[2];
-//
-//
-//		double xdim = 0, ydim = 0;
-//		sdaiGetAttrBN(sweptAreaInstance, "XDim", sdaiREAL, &xdim);
-//		sdaiGetAttrBN(sweptAreaInstance, "YDim", sdaiREAL, &ydim);
-//
-//
-//		vector<double> node1 = { x1,y1,z1 };
-//		vector<double> node2 = { x1 + (int)(depth * direct[0]),y1 + (int)(depth * direct[1]),z1 + (int)(depth * direct[2]) };
-//
-//		int no1 = recordNodeTable(node1);
-//		int no2 = recordNodeTable(node2);
-//		int sectno = recordSectTable({ (int)xdim,(int)ydim });
-//
-//		recordBeamElement(no1, no2, matno, sectno);
-//	}
-//}
-
-
 std::vector<double> IFCTranslator::getCoordByCoordAggr( long long*  coordAggr)
 {
-	double x0 = 0, y0 = 0, z0 = 0;
+	double x0,y0,z0;
 	engiGetAggrElement(coordAggr, 0, sdaiREAL, &x0);
 	engiGetAggrElement(coordAggr, 1, sdaiREAL, &y0);
 	engiGetAggrElement(coordAggr, 2, sdaiREAL, &z0);
@@ -569,51 +560,21 @@ std::vector<double> IFCTranslator::getDirectVectorByDirectInstance(const long lo
 	return { x,y,z };
 }
 
-//std::vector<vector<double>>  IFCTranslator::getDirectMatrix(const long long& instance)
-//{
-//	long long opInstance;
-//	sdaiGetAttrBN(instance, "ObjectPlacement", sdaiINSTANCE, &opInstance);
-//	long long rpInstance;
-//	sdaiGetAttrBN(opInstance, "RelativePlacement", sdaiINSTANCE, &rpInstance);
-//	long long axisdirectInstance = 0;
-//	sdaiGetAttrBN(rpInstance, "Axis", sdaiINSTANCE, &axisdirectInstance);
-//	long long refdirectInstance = 0;
-//	sdaiGetAttrBN(rpInstance, "RefDirection", sdaiINSTANCE, &refdirectInstance);
-//	if (refdirectInstance>0&&axisdirectInstance>0)
-//	{
-//		return getDirectMatrixByVector(getDirectVectorByDirectInstance(axisdirectInstance),
-//			getDirectVectorByDirectInstance(refdirectInstance));
-//	}
-//	else
-//		return EMATRIX;
-//}
-
 void IFCTranslator::parseBuilding(const long long& buildingInstance, Eigen::Matrix4d relativeTmatrix)
 {
-	//vector<double> localCoord = getCoordinate(buildingInstance);
-	//vector<vector<double>> localDirect = getDirectMatrix(buildingInstance);
 	Matrix4d localTmatrix = getTMatrixByInstance(buildingInstance);
-	//vector<double> coord = vectorAdd(localCoord, relativeCoord);
-	//vector < vector<double>> direct = Matrix3Multi(relativeDirect, localDirect);
 	long long* containElemAggr;
 	vector<long long> containElemInstances = getInstancesByInstance(buildingInstance, "ContainsElements");
-	//sdaiGetAttrBN(buildingInstance, "ContainsElements", sdaiAGGR, &containElemAggr);
-	//long long containElemInstance;
-	//engiGetAggrElement(containElemAggr, 0, sdaiINSTANCE, &containElemInstance);
 	for (auto containElemInstance : containElemInstances)
 	{
-		//long long* relatedElemAggr;
-		//sdaiGetAttrBN(containElemInstance, "RelatedElements", sdaiAGGR, &relatedElemAggr);
-		//int count = sdaiGetMemberCount(relatedElemAggr);
 		vector<long long> relatedInstances = getInstancesByInstance(containElemInstance, "RelatedElements");
 		for (auto instance:relatedInstances)
 		{
 
 			string elemtype = engiGetInstanceClassInfoUC(instance);
-			if (elemtype == "IFCBUILDINGSTOREY")
-			{
-			}
-			//parseBuildingStorey(instance, localCoord);
+			if (elemtype == "IFCBUILDINGSTOREY")				
+				parseBuildingStorey(instance, relativeTmatrix*localTmatrix);
+				
 			else if (elemtype == "IFCBUILDINGELEMENTPROXY" || elemtype == "IFCCOLUMN" || elemtype == "IFCBEAMSTANDARDCASE" || elemtype == "IFCBEAM")
 				parseElement(instance,relativeTmatrix*localTmatrix);
 		}
@@ -639,12 +600,10 @@ vector<long long> IFCTranslator::getInstancesByInstance(long long instance, char
 	sdaiGetAttrBN(instance,name, sdaiAGGR, &aggr);
 	return getInstancesByAggr(aggr);
 }
+
 void IFCTranslator::parseSite(const long long& siteInstance)
 {
 	Matrix4d localTmatrix = getTMatrixByInstance(siteInstance);
-	//vector<double> coord = getCoordinate(siteInstance);
-	//vector<vector<double>> directMatrix = getDirectMatrix(siteInstance);
-
 	vector<long long> isDecInstances = getInstancesByInstance(siteInstance,"IsDecomposedBy");
 	for (auto isDecInstance:isDecInstances)
 	{
@@ -656,15 +615,11 @@ void IFCTranslator::parseSite(const long long& siteInstance)
 	}
 }
 
-Eigen::Matrix<double, 4, 4>  IFCTranslator::getTMatrixByInstance(const long long& instance)
+
+Eigen::Matrix4d  IFCTranslator::getTMatrixByInstance(const long long& instance)
 {
-	Matrix4d D;
-	Matrix4d R;
-	D << 1, 0, 0, 0,
-		0, 1, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1;
-	R<< 1, 0, 0, 0,
+	Matrix4d T;
+	T << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0,
 		0, 0, 0, 1;
@@ -672,7 +627,6 @@ Eigen::Matrix<double, 4, 4>  IFCTranslator::getTMatrixByInstance(const long long
 	sdaiGetAttrBN(instance, "ObjectPlacement", sdaiINSTANCE, &opInstance);
 	long long rpInstance;
 	sdaiGetAttrBN(opInstance, "RelativePlacement", sdaiINSTANCE, &rpInstance);
-
 	//获取原点坐标
 	long long locInstance;
 	sdaiGetAttrBN(rpInstance, "Location", sdaiINSTANCE, &locInstance);
@@ -682,43 +636,38 @@ Eigen::Matrix<double, 4, 4>  IFCTranslator::getTMatrixByInstance(const long long
 		sdaiGetAttrBN(locInstance, "Coordinates", sdaiAGGR, &loccoordAggr);
 		vector<double> pan = getCoordByCoordAggr(loccoordAggr);
 		for (int i = 0; i < 3; i++)
-			D(i,3) = pan[i];
+			T(i,3) = pan[i];
 	}
-	//获取x轴方向向量
+	//获取z轴方向向量
 	long long axisInstance;
 	sdaiGetAttrBN(rpInstance, "Axis", sdaiINSTANCE, &axisInstance);
-	vector<double> xdim = { 1,0,0 };
+	vector<double> zdim = { 0,0,1 };
 	if (axisInstance > 0)
 	{
-		long long* xdimAggr = nullptr;
-		sdaiGetAttrBN(axisInstance, "DirectionRatios", sdaiAGGR, &xdimAggr);
-		xdim = getCoordByCoordAggr(xdimAggr);
+		long long* zdimAggr = nullptr;
+		sdaiGetAttrBN(axisInstance, "DirectionRatios", sdaiAGGR, &zdimAggr);
+		zdim = getCoordByCoordAggr(zdimAggr);
 	}
-	//获取y轴方向向量
+	//获取x轴方向向量
 	long long refInstance;
 	sdaiGetAttrBN(rpInstance, "RefDirection", sdaiINSTANCE, &refInstance);
-	vector<double> ydim = { 0,1,0 };
+	vector<double> xdim = { 1,0,0 };
 	if (refInstance > 0)
 	{
-		long long* ydimAggr = nullptr;
-		sdaiGetAttrBN(refInstance, "DirectionRatios", sdaiAGGR, &ydimAggr);
-		vector<double> ydim = getCoordByCoordAggr(ydimAggr);
+		long long* xdimAggr = nullptr;
+		sdaiGetAttrBN(refInstance, "DirectionRatios", sdaiAGGR, &xdimAggr);
+		xdim = getCoordByCoordAggr(xdimAggr);
 	}
-	xdim = mynorm(xdim);
-	ydim = mynorm(ydim);
-	vector<double> zdim = crossProduct(xdim, ydim);
+	vector<double> ydim = crossProduct(zdim, xdim);
 	for (int i = 0; i < 3; i++)
 	{
-		//R(i, 0) = xdim[i];
-		//R(i, 1) = ydim[i];
-		//R(i, 2) = zdim[i];
-		R(0,i) = xdim[i];
-		R(1,i) = ydim[i];
-		R(2,i) = zdim[i];
+		T(i, 0) = xdim[i];
+		T(i, 1) = ydim[i];
+		T(i, 2) = zdim[i];
 	}
-
-	return R*D;
+	return T;
 }
+
 std::vector<double> IFCTranslator::getCoordinate(const long long & instance)
 {
 	long long opInstance;
@@ -1354,21 +1303,7 @@ std::wstring IFCTranslator::getMatName(const long long& elemInstance)
 //		splitBeam(v[i], v);
 //}
 
-bool unique(std::pair<double, double> p1, std::pair<double, double> p2)
-{
-	if (abs(p1.first - p2.first) < ERRORDOUBLE && abs(p1.second - p2.second) < ERRORDOUBLE)
-		return true;
-	else
-		return false;
-}
 
-bool cmp(std::pair<double, double> p1, std::pair<double, double> p2)
-{
-	if (abs(p1.first - p2.first) < ERRORDOUBLE)
-		return p1.second < p2.second;
-
-	return p1.first < p2.first;
-}
 //void IFCTranslator::splitBeam(BeamElement& e, std::vector<BeamElement> v)
 //{
 //	e.mElemCrossPoints.push_back({ e.mNode1[0],e.mNode1[1] });

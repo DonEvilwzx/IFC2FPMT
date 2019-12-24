@@ -54,20 +54,21 @@ protected:
 	void parseSite(const long long& siteInstance);
 	void parseBuilding(const long long& buildingInstance, Eigen::Matrix4d relativeTMatrix);
 	void parseBuildingStorey(const long long& instance, Eigen::Matrix4d relativeTmatrix);
-	void parseElement(const long long& instance, Eigen::Matrix4d relativeTmatrix);
-	void parseItems(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
+	void parseElement(const long long& instance, Eigen::Matrix4d relativeTmatrix,bool isWall);
+	void parseItems(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix,bool isWall);
 	void parseIFCCSGSOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
 	void parseIFCFACEBASEDSURFACEMODEL(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
 	void parseIFCFACETEDBREP(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
 	void parseCfsFaces(long long* cfsfacesAggr, int matno, Eigen::Matrix4d relativeTmatrix);
-	void parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
-	void parseIFCMAPPEDITEM(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
+	void parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix,bool isWall);
+	void parseIFCMAPPEDITEM(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix,bool isWall);
 	
 	int recordMatTable(std::wstring matname);
 	int recordSectTable(std::vector<double> vsect);
 	int recordNodeTable(std::vector<double> vnode);
 	int recordNodeTableByVector(Eigen::Vector4d v);
 	void recordBeamElement(int n1, int n2, int matno, int sectno);
+	void recordShellElement(int n1, int n2, int n3, int matno, int sectno);
 	void recordSolidElement(int n1, int n2, int n3, int n4, int matno);
 	void record5SolidElement(int no1, int no2, int no3, int no4, int no5, int no6, int no7, int no8, int matno);
 	void resetMappedAttribute();
@@ -80,6 +81,8 @@ protected:
 	std::vector<double> getCoordByCoordAggr(long long*  coordAggr);
 	std::vector<double> getDirectByDirectInstance(const long long& directInstance);
 	Eigen::Matrix4d getTMatrixByInstance(const long long& instance);
+	Eigen::Matrix4d getTMatrixByIfcAxis2Placement3D(const long long& instance);
+	Eigen::Matrix4d getTMatrixByIfcAxis2Placement2D(const long long& instance);
 	//输出FPMT文件
 	void writeFPMT();
 
@@ -94,7 +97,7 @@ private:
 	std::map<std::vector<double>, int> mNodeTable;
 	std::vector<Beam> mBeams;
 	std::vector<Solid> mSolids;
-	
+	std::vector<Shell> mShells;
 	//用于梁单元的截面
 	double mMappedXscale=1;
 	double mMappedYscale=1;

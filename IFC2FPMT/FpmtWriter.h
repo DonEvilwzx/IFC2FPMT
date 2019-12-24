@@ -20,6 +20,7 @@ public:
 	void addTrussElem(int id, int nn1, int nn2, int realno, int sectno, int matno);
 	void addBeamElem(int id, int nn1, int nn2, int sectno, int matno);
 	void addSolidElem(int id, int nn1, int nn2, int nn3, int nn4, int matno);
+	void addShellElem(int id, int nn1, int nn2, int nn3, int sectno, int matno);
 	void writeFPMT(wchar_t* filename);
 	FpmtWriter();
 	~FpmtWriter();

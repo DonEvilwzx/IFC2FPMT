@@ -83,6 +83,7 @@ protected:
 	Eigen::Matrix4d getTMatrixByInstance(const long long& instance);
 	Eigen::Matrix4d getTMatrixByIfcAxis2Placement3D(const long long& instance);
 	Eigen::Matrix4d getTMatrixByIfcAxis2Placement2D(const long long& instance);
+	Eigen::Matrix4d getTMatrixByPositionInstance(const long long& instance);
 	//Êä³öFPMTÎÄ¼þ
 	void writeFPMT();
 

@@ -100,7 +100,7 @@ void FpmtWriter::addSolidElem(int id, int nn1, int nn2, int nn3, int nn4, int ma
 	oss << id << ",SOLID," << nn1 << "," << nn2 << "," << nn3 << "," << nn4 << "," << "0,0," << matno;
 	mListElem.push_back(oss.str());
 }
-void FpmtWriter::addShellElem(int id, int nn1, int nn2, int nn3, int matno, int sectno)
+void FpmtWriter::addShellElem(int id, int nn1, int nn2, int nn3, int sectno, int matno)
 {
 	std::ostringstream oss;
 	oss << id << ",SHELL," << nn1 << "," << nn2 << "," << nn3 << "," << 0 << "," << sectno << "," << matno;

@@ -62,10 +62,10 @@ protected:
 	void parseCfsFaces(long long* cfsfacesAggr, int matno, Eigen::Matrix4d relativeTmatrix);
 	void parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix, bool isWall);
 	void parseIFCMAPPEDITEM(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix, bool isWall);
-
 	int recordMatTable(std::wstring matname);
 	int recordSectTable(std::vector<double> vsect);
 	int recordNodeTable(std::vector<double> vnode);
+	bool findNodeTable(std::vector<double> vnode);
 	int recordNodeTableByVector(Eigen::Vector4d v);
 	void recordBeamElement(int n1, int n2, int matno, int sectno);
 	void recordShellElement(int n1, int n2, int n3, int matno, int sectno);
@@ -84,6 +84,10 @@ protected:
 	Eigen::Matrix4d getTMatrixByIfcAxis2Placement3D(const long long& instance);
 	Eigen::Matrix4d getTMatrixByIfcAxis2Placement2D(const long long& instance);
 	Eigen::Matrix4d getTMatrixByPositionInstance(const long long& instance);
+	
+	std::vector<double> getBeamCrossPoint(Beam beam1, Beam beam2);
+	
+	void splitBeams();
 	//Êä³öFPMTÎÄ¼þ
 	void writeFPMT();
 
@@ -96,7 +100,7 @@ private:
 	//std::map<std::wstring, int> mSectNameTable;
 	std::map<std::wstring, int> mMatTable;
 	//std::set<std::vector<double>> mCrossPoints;
-	std::map<std::vector<double>, int> mNodeTable;
+	std::map<int, std::vector<double>> mNodeTable;
 	std::map<int, std::vector<Beam>> mBeams;
 	std::vector<Solid> mSolids;
 	std::vector<Shell> mShells;

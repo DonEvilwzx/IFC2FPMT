@@ -12,15 +12,12 @@
 using namespace std;
 using namespace Eigen;
 const double ERRORTHICK = 800;
-const double ERRORDOUBLE = 0.001;
-
-
-
+const double ERRORDOUBLE = 0.01;
 
 IFCTranslator::~IFCTranslator()
 {
 
-	
+
 }
 
 std::vector<double> roundv(std::vector<double> v)
@@ -30,6 +27,7 @@ std::vector<double> roundv(std::vector<double> v)
 		rev.push_back(round(itr));
 	return rev;
 }
+
 bool equalDouble(std::vector<double> v1, std::vector<double> v2)
 {
 	if (v1.size() != v2.size())return false;
@@ -44,7 +42,7 @@ bool equalDouble(std::vector<double> v1, std::vector<double> v2)
 vector<double> mynorm(vector<double> v)
 {
 	double len = 0;
-	for (int i = 0; i <  v.size(); i++)
+	for (int i = 0; i < v.size(); i++)
 		len += v[i] * v[i];
 	for (int i = 0; i < v.size(); i++)
 		v[i] = v[i] / len;
@@ -79,7 +77,7 @@ vector<vector<double>> getDirectMatrixByVector(vector<double> v1, vector<double>
 		rev[0][j] = v1[j];
 	for (int j = 0; j < 3; j++)
 		rev[1][j] = v2[j];
-	rev[2][0] = v1[1] * v2[2]-v1[2]*v2[1];
+	rev[2][0] = v1[1] * v2[2] - v1[2] * v2[1];
 	rev[2][1] = -v1[0] * v2[2] + v1[2] * v2[0];
 	rev[2][2] = v1[0] * v2[1] - v1[1] * v2[0];
 	return rev;
@@ -103,12 +101,12 @@ vector<double> vectorMulMatrix(vector<double> v, vector<vector<double>> m)
 	return rev;
 }
 
-vector<double> MatrixMulVector(vector<double> v,vector<vector<double>> m)
+vector<double> MatrixMulVector(vector<double> v, vector<vector<double>> m)
 {
 	vector<double> rev(3);
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
-			rev[i] += m[i][j]*v[j];
+			rev[i] += m[i][j] * v[j];
 	return rev;
 }
 
@@ -131,18 +129,18 @@ bool cmp(std::pair<double, double> p1, std::pair<double, double> p2)
 void IFCTranslator::test1()
 {
 	setOutputpath(_T("output.fpmt"));
-	std::basic_string<wchar_t> ifcSchemaName = L"IFC2X3_TC1.exp";
-	//std::basic_string<wchar_t> ifcSchemaName = L"IFC4_ADD2.exp";
-	
+	//std::basic_string<wchar_t> ifcSchemaName = L"IFC2X3_TC1.exp";
+	std::basic_string<wchar_t> ifcSchemaName = L"IFC4_ADD2.exp";
+
 	//2_3版本
-	CString m_path = _T("10层框架.ifc");
+	//CString m_path = _T("10层框架.ifc");
 	//CString m_path = _T("安中大楼.ifc");
-	//CString m_path = _T("教学楼项目.ifc");
+	CString m_path = _T("教学楼项目.ifc");
 	//CString m_path = _T("15#梁柱.0001.ifc");
 	//CString m_path = _T("公益小桥.ifc");
 	//CString m_path = _T("小高层商住楼.0001.ifc");
 	//CString m_path = _T("03IDC.ifc");
-
+	//CString m_path = _T("别墅项目.ifc");
 
 	//4_2版本
 	//CString m_path = _T("CSGprimitive.ifc");
@@ -174,11 +172,15 @@ int IFCTranslator::recordMatTable(std::wstring matname)
 
 int IFCTranslator::recordNodeTable(std::vector<double> vnode)
 {
+	if (abs(vnode[2] - mElevations[mStoreyNum]) < 800)
+	{
+		vnode[2] = mElevations[mStoreyNum];
+	}
 	int nodeno;
 	bool isFind = false;
 	for (auto node : mNodeTable)
 	{
-		if (equalDouble(node.first, vnode))
+		if (equalThick(node.first, vnode))
 		{
 			isFind = true;
 			nodeno = node.second;
@@ -261,7 +263,7 @@ int IFCTranslator::recordNodeTableByVector(Eigen::Vector4d v)
 	return recordNodeTable({ v(0),v(1),v(2) });
 }
 
-void IFCTranslator::recordSolidElement(int n1, int n2, int n3,int n4,int matno)
+void IFCTranslator::recordSolidElement(int n1, int n2, int n3, int n4, int matno)
 {
 	Solid elem;
 	elem.mMatNum = matno;
@@ -280,7 +282,7 @@ void IFCTranslator::recordBeamElement(int n1, int n2, int matno, int sectno)
 	elem.mSectNum = sectno;
 	elem.mNode1 = n1;
 	elem.mNode2 = n2;
-	mBeams.push_back(elem);
+	mBeams[mStoreyNum].push_back(elem);
 }
 
 void IFCTranslator::record5SolidElement(int no1, int no2, int no3, int no4, int no5, int no6, int no7, int no8, int matno)
@@ -299,7 +301,7 @@ void IFCTranslator::parseIFCCSGSOLID(const long long& itemInstance, int matno, E
 	sdaiGetAttrBN(itemInstance, "TreeRootExpression", sdaiINSTANCE, &treeRootInstance);
 	double xlength, ylength, zlength;
 	sdaiGetAttrBN(treeRootInstance, "XLength", sdaiREAL, &xlength);
- 	sdaiGetAttrBN(treeRootInstance, "YLength", sdaiREAL, &ylength);
+	sdaiGetAttrBN(treeRootInstance, "YLength", sdaiREAL, &ylength);
 	sdaiGetAttrBN(treeRootInstance, "ZLength", sdaiREAL, &zlength);
 	long long positionInstance;
 	sdaiGetAttrBN(treeRootInstance, "Position", sdaiINSTANCE, &positionInstance);
@@ -399,7 +401,7 @@ void IFCTranslator::parseIFCFACEBASEDSURFACEMODEL(const long long& itemInstance,
 		engiGetAggrElement(fbsmFacesAggr, 0, sdaiINSTANCE, &fbsmFaceInstance);
 		long long* cfsfacesAggr;
 		sdaiGetAttrBN(fbsmFaceInstance, "CfsFaces", sdaiAGGR, &cfsfacesAggr);
-		parseCfsFaces(cfsfacesAggr,matno,relativeTmatrix);
+		parseCfsFaces(cfsfacesAggr, matno, relativeTmatrix);
 	}
 }
 void IFCTranslator::parseIFCFACETEDBREP(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix)
@@ -408,10 +410,10 @@ void IFCTranslator::parseIFCFACETEDBREP(const long long& itemInstance, int matno
 	sdaiGetAttrBN(itemInstance, "Outer", sdaiINSTANCE, &outerInstacne);
 	long long* cfsfacesAggr;
 	sdaiGetAttrBN(outerInstacne, "CfsFaces", sdaiAGGR, &cfsfacesAggr);
-	parseCfsFaces(cfsfacesAggr,matno,relativeTmatrix);
+	parseCfsFaces(cfsfacesAggr, matno, relativeTmatrix);
 }
 
-void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix,bool isWall)
+void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix, bool isWall)
 {
 	double depth = 0;
 	sdaiGetAttrBN(itemInstance, "Depth", sdaiREAL, &depth);
@@ -439,18 +441,18 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 	{
 		double sectx, secty;
 		sdaiGetAttrBN(sweptAreaInstance, "XDim", sdaiREAL, &sectx);
-		sdaiGetAttrBN(sweptAreaInstance, "YDim", sdaiREAL, &secty); 
+		sdaiGetAttrBN(sweptAreaInstance, "YDim", sdaiREAL, &secty);
 		if (isWall)		//如果是墙，变为壳单元
 		{
 			double t;
-			Vector4d node11=node1;
-			Vector4d node12=node1;
-			Vector4d node21=node2;
-			Vector4d node22=node2;
+			Vector4d node11 = node1;
+			Vector4d node12 = node1;
+			Vector4d node21 = node2;
+			Vector4d node22 = node2;
 			if (secty > sectx)
 			{
 				t = sectx;
-				node11(1) =node21(1)=  -secty/ 2;
+				node11(1) = node21(1) = -secty / 2;
 				node12(1) = node22(1) = secty / 2;
 			}
 			else
@@ -459,7 +461,7 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 				node11(0) = node21(0) = -sectx / 2;
 				node12(0) = node22(0) = sectx / 2;
 			}
-			Vector4d worldNode11= relativeTmatrix * localTmatrix*node11;
+			Vector4d worldNode11 = relativeTmatrix * localTmatrix*node11;
 			Vector4d worldNode12 = relativeTmatrix * localTmatrix*node12;
 			Vector4d worldNode21 = relativeTmatrix * localTmatrix*node21;
 			Vector4d worldNode22 = relativeTmatrix * localTmatrix*node22;
@@ -473,7 +475,11 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 		}
 		else    //如果是梁柱，变为梁单元
 		{
-			sectno = recordSectTable({ 1,sectx*mMappedXscale,secty*mMappedYscale,mMappedAngle });
+			double h = sectx * mMappedXscale;
+			double b = secty * mMappedYscale;
+			if (h < b)swap(h, b);
+
+			sectno = recordSectTable({ 1,b,h,mMappedAngle });
 			Vector4d worldNode1 = relativeTmatrix * localTmatrix*node1;
 			Vector4d worldNode2 = relativeTmatrix * localTmatrix*node2;
 			int no1 = recordNodeTableByVector(worldNode1);
@@ -481,6 +487,26 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 			recordBeamElement(no1, no2, matno, sectno);
 		}
 	}
+	//else if (areaName == "IFCARBITRARYCLOSEDPROFILEDEF")
+	//{
+	//	//if (isWall)
+	//	//{
+	//	//	long long ocInstance;
+	//	//	sdaiGetAttrBN(itemInstance, "OuterCurve", sdaiINSTANCE, &ocInstance);
+	//	//	vector<long long> pointInstances = getInstancesByInstance(ocInstance, "Points");
+	//	//	vector<vector<double>> points;
+	//	//	if (pointInstances.size() == 9)
+	//	//	{
+	//	//		for (auto pointInstance : pointInstances)
+	//	//		{
+	//	//			long long* coordAggr;
+	//	//			sdaiGetAttrBN(pointInstance, "Coordinates", sdaiAGGR, &coordAggr);
+	//	//			vector<double> coord = getCoordByCoordAggr(coordAggr);
+	//	//			points.push_back(coord);
+	//	//		}
+	//	//	}
+	//	//}
+	//}
 	else //其他截面暂做简单处理
 	{
 		Vector4d worldNode1 = relativeTmatrix * localTmatrix*node1;
@@ -490,7 +516,7 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 		sectno = recordSectTable({ 1,300,300,0 });
 		recordBeamElement(no1, no2, matno, sectno);
 	}
-	
+
 }
 void IFCTranslator::recordShellElement(int n1, int n2, int n3, int matno, int sectno)
 {
@@ -535,7 +561,7 @@ Eigen::Matrix4d IFCTranslator::getTMatrixByPositionInstance(const long long& pos
 	}
 	return T;
 }
-void IFCTranslator::parseIFCMAPPEDITEM(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix,bool isWall)
+void IFCTranslator::parseIFCMAPPEDITEM(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix, bool isWall)
 {
 	Matrix4d D = Matrix4d::Identity();
 	Matrix4d R = Matrix4d::Identity();
@@ -552,7 +578,7 @@ void IFCTranslator::parseIFCMAPPEDITEM(const long long& itemInstance, int matno,
 	long long* coorAggr;
 	sdaiGetAttrBN(localOriginInstance, "Coordinates", sdaiAGGR, &coorAggr);
 	pan = getCoordByCoordAggr(coorAggr);
-	long long axis1Instance,axis2Instance,axis3Instance;
+	long long axis1Instance, axis2Instance, axis3Instance;
 	sdaiGetAttrBN(mappingTargetInstance, "Axis1", sdaiINSTANCE, &axis1Instance);
 	sdaiGetAttrBN(mappingTargetInstance, "Axis2", sdaiINSTANCE, &axis2Instance);
 	sdaiGetAttrBN(mappingTargetInstance, "Axis3", sdaiINSTANCE, &axis3Instance);
@@ -587,8 +613,8 @@ void IFCTranslator::parseIFCMAPPEDITEM(const long long& itemInstance, int matno,
 	}
 	mMappedXscale = scale[0];
 	mMappedYscale = scale[1];
-	mMappedAngle = -atan(xdim[1] / xdim[0])*180/3.14;
-	Matrix4d localTmatrix = D*R*S;
+	mMappedAngle = -atan(xdim[1] / xdim[0]) * 180 / 3.14;
+	Matrix4d localTmatrix = D * R*S;
 	long long mappingSourceInstance;
 	sdaiGetAttrBN(itemInstance, "MappingSource", sdaiINSTANCE, &mappingSourceInstance);
 	long long mappedRepreInstance;
@@ -596,7 +622,7 @@ void IFCTranslator::parseIFCMAPPEDITEM(const long long& itemInstance, int matno,
 	vector<long long> itemInstances = getInstancesByInstance(mappedRepreInstance, "Items");
 	for (auto itemInstance : itemInstances)
 	{
-		parseItems(itemInstance, matno, relativeTmatrix*localTmatrix,isWall);
+		parseItems(itemInstance, matno, relativeTmatrix*localTmatrix, isWall);
 		resetMappedAttribute();
 	}
 }
@@ -608,32 +634,32 @@ void IFCTranslator::resetMappedAttribute()
 	double mMappedAngle = 0;
 }
 
-void IFCTranslator::parseItems(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix,bool isWall)
+void IFCTranslator::parseItems(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix, bool isWall)
 {
-		string  itemName = engiGetInstanceClassInfoUC(itemInstance);
-		//当实体为IfcCSGSolid实体时
-		if (itemName == "IFCCSGSOLID")
-		{
-			parseIFCCSGSOLID(itemInstance, matno, relativeTmatrix);
-		}
-		//当实体为ExtrudedSolid实体
-		else if (itemName == "IFCEXTRUDEDAREASOLID")
-		{
-			parseIFCEXTRUDEDAREASOLID(itemInstance, matno, relativeTmatrix,isWall);
-		}
-		//当实体为SurfceModel实体
-		else if (itemName == "IFCFACEBASEDSURFACEMODEL")
-		{
-			parseIFCFACEBASEDSURFACEMODEL(itemInstance, matno, relativeTmatrix);
-		}
-		else if (itemName == "IFCFACETEDBREP")
-		{
-			parseIFCFACETEDBREP(itemInstance, matno, relativeTmatrix);
-		}
-		else if (itemName == "IFCMAPPEDITEM")
-		{
-			parseIFCMAPPEDITEM(itemInstance, matno, relativeTmatrix,isWall);
-		}
+	string  itemName = engiGetInstanceClassInfoUC(itemInstance);
+	//当实体为IfcCSGSolid实体时
+	if (itemName == "IFCCSGSOLID")
+	{
+		parseIFCCSGSOLID(itemInstance, matno, relativeTmatrix);
+	}
+	//当实体为ExtrudedSolid实体
+	else if (itemName == "IFCEXTRUDEDAREASOLID")
+	{
+		parseIFCEXTRUDEDAREASOLID(itemInstance, matno, relativeTmatrix, isWall);
+	}
+	//当实体为SurfceModel实体
+	else if (itemName == "IFCFACEBASEDSURFACEMODEL")
+	{
+		parseIFCFACEBASEDSURFACEMODEL(itemInstance, matno, relativeTmatrix);
+	}
+	else if (itemName == "IFCFACETEDBREP")
+	{
+		parseIFCFACETEDBREP(itemInstance, matno, relativeTmatrix);
+	}
+	else if (itemName == "IFCMAPPEDITEM")
+	{
+		parseIFCMAPPEDITEM(itemInstance, matno, relativeTmatrix, isWall);
+	}
 }
 
 void IFCTranslator::parseBuildingStorey(const long long& instance, Eigen::Matrix4d relativeTmatrix)
@@ -647,38 +673,44 @@ void IFCTranslator::parseBuildingStorey(const long long& instance, Eigen::Matrix
 		{
 			string elemtype = engiGetInstanceClassInfoUC(instance);
 
-			if (elemtype == "IFCBUILDINGELEMENTPROXY" || elemtype == "IFCCOLUMN" || elemtype == "IFCBEAMSTANDARDCASE" || elemtype == "IFCBEAM")
+			if (/*elemtype == "IFCBUILDINGELEMENTPROXY" ||*/ elemtype == "IFCCOLUMN" || elemtype == "IFCBEAMSTANDARDCASE" || elemtype == "IFCBEAM")
 				parseElement(instance, relativeTmatrix*localTmatrix, false);
-			else if (elemtype == "IFCWALL" || elemtype == "IFCWALLSTANDARDCASE")
-				parseElement(instance, relativeTmatrix*localTmatrix, true);
+			else if (elemtype == "IFCWALL" || elemtype == "IFCWALLSTANDARDCASE" || elemtype == "IFCSLAB")
+			{
+				//parseElement(instance, relativeTmatrix*localTmatrix, true);
+			}
 		}
 	}
 }
 
-void IFCTranslator::parseElement(const long long& instance, Eigen::Matrix4d relativeTmatrix,bool isWall)
+void IFCTranslator::parseElement(const long long& instance, Eigen::Matrix4d relativeTmatrix, bool isWall)
 {
 
-	Matrix4d localTmatrix= getTMatrixByInstance(instance);
+	Matrix4d localTmatrix = getTMatrixByInstance(instance);
 	//获取材料名并录入到材料表
 	wstring matname = getMatName(instance);
-	int matno=recordMatTable(matname);
-	long long repreInstance;
-	sdaiGetAttrBN(instance, "Representation", sdaiINSTANCE, &repreInstance);
-	vector<long long> repInstances=getInstancesByInstance(repreInstance, "Representations");
-	for (auto repInstance:repInstances)
+	int matno = recordMatTable(matname);
+	long long rpInstance;
+	sdaiGetAttrBN(instance, "Representation", sdaiINSTANCE, &rpInstance);
+	vector<long long> repInstances = getInstancesByInstance(rpInstance, "Representations");
+	for (auto repInstance : repInstances)
 	{
 		vector<long long> itemInstances = getInstancesByInstance(repInstance, "Items");
-		for(auto itemInstance:itemInstances)
-			parseItems(itemInstance, matno,relativeTmatrix*localTmatrix,isWall);
+		for (auto itemInstance : itemInstances)
+			parseItems(itemInstance, matno, relativeTmatrix*localTmatrix, isWall);
 	}
 }
 
-std::vector<double> IFCTranslator::getCoordByCoordAggr( long long*  coordAggr)
+std::vector<double> IFCTranslator::getCoordByCoordAggr(long long*  coordAggr)
 {
-	double x0,y0,z0;
+	double x0 = 0, y0 = 0, z0 = 0;
+	int cnt = sdaiGetMemberCount(coordAggr);
 	engiGetAggrElement(coordAggr, 0, sdaiREAL, &x0);
 	engiGetAggrElement(coordAggr, 1, sdaiREAL, &y0);
-	engiGetAggrElement(coordAggr, 2, sdaiREAL, &z0);
+	if (cnt == 3)
+	{
+		engiGetAggrElement(coordAggr, 2, sdaiREAL, &z0);
+	}
 	//double len = getColumenLength(elemInstance);
 	return { x0,y0 ,z0 };
 }
@@ -705,13 +737,18 @@ void IFCTranslator::parseBuilding(const long long& buildingInstance, Eigen::Matr
 		for (auto bsInstance : bsInstances)
 		{
 			string elemtype = engiGetInstanceClassInfoUC(bsInstance);
-			if(elemtype=="IFCBUILDINGSTOREY")
+			if (elemtype == "IFCBUILDINGSTOREY")
+			{
+				double elevation;
+				sdaiGetAttrBN(bsInstance, "Elevation", sdaiREAL, &elevation);
+				mElevations[mStoreyNum] = elevation;
 				parseBuildingStorey(bsInstance, relativeTmatrix*localTmatrix);
+				mStoreyNum++;
+			}
 		}
 	}
 	//如果没有楼层概念，则直接执行解析构件
 	parseBuildingStorey(buildingInstance, relativeTmatrix*localTmatrix);
-
 }
 
 std::vector<long long> IFCTranslator::getInstancesByAggr(long long* aggr)
@@ -729,26 +766,26 @@ std::vector<long long> IFCTranslator::getInstancesByAggr(long long* aggr)
 
 vector<long long> IFCTranslator::getInstancesByInstance(long long instance, char* name)
 {
-	long long* aggr=nullptr;
-	sdaiGetAttrBN(instance,name, sdaiAGGR, &aggr);
+	long long* aggr = nullptr;
+	sdaiGetAttrBN(instance, name, sdaiAGGR, &aggr);
 	return getInstancesByAggr(aggr);
 }
 
 void IFCTranslator::parseSite(const long long& siteInstance)
 {
 	Matrix4d localTmatrix = getTMatrixByInstance(siteInstance);
-	vector<long long> isDecInstances = getInstancesByInstance(siteInstance,"IsDecomposedBy");
-	for (auto isDecInstance:isDecInstances)
+	vector<long long> isDecInstances = getInstancesByInstance(siteInstance, "IsDecomposedBy");
+	for (auto isDecInstance : isDecInstances)
 	{
-		vector<long long> buildingInstances = getInstancesByInstance(isDecInstance,"RelatedObjects");
-		for (auto buildingInstance:buildingInstances)
+		vector<long long> buildingInstances = getInstancesByInstance(isDecInstance, "RelatedObjects");
+		for (auto buildingInstance : buildingInstances)
 		{
 			parseBuilding(buildingInstance, localTmatrix);
 		}
 	}
 }
 
-Eigen::Matrix4d  IFCTranslator::getTMatrixByInstance(const long long& instance)
+Eigen::Matrix4d IFCTranslator::getTMatrixByInstance(const long long& instance)
 {
 	long long opInstance;
 	sdaiGetAttrBN(instance, "ObjectPlacement", sdaiINSTANCE, &opInstance);
@@ -804,6 +841,7 @@ Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement3D(const long long& 
 	}
 	return T;
 }
+
 std::vector<double> IFCTranslator::getCoordinate(const long long & instance)
 {
 	long long opInstance;
@@ -829,11 +867,11 @@ void IFCTranslator::translateNewVersion(CString ifcFileName, std::basic_string<w
 	fileName[ifcFileName.GetLength()] = 0;
 	long long model = 0;
 	model = sdaiOpenModelBNUnicode(0, (char*)fileName, (char*)ifcSchemaName.c_str());
-	long long* siteAggr= sdaiGetEntityExtentBN(model, "IFCSITE");
+	long long* siteAggr = sdaiGetEntityExtentBN(model, "IFCSITE");
 	vector<long long> siteInstances = getInstancesByAggr(siteAggr);
 	if (siteInstances.size() > 0)
 	{
-		for (auto siteInstance:siteInstances)
+		for (auto siteInstance : siteInstances)
 		{
 			parseSite(siteInstance);
 		}
@@ -842,9 +880,11 @@ void IFCTranslator::translateNewVersion(CString ifcFileName, std::basic_string<w
 	{
 		long long* buildingAggr = sdaiGetEntityExtentBN(model, "IFCBUILDING");
 		vector<long long> buildingInstances = getInstancesByAggr(buildingAggr);
-		for(auto buildingInstance:buildingInstances)
+		for (auto buildingInstance : buildingInstances)
 			parseBuilding(buildingInstance, Matrix4d::Identity());
 	}
+
+
 	writeFPMT();
 }
 
@@ -901,8 +941,9 @@ void IFCTranslator::writeFPMT()
 	for (auto itr : nodeTable)
 		mFPMTWriter.addNode(itr.first, itr.second[0] / 1000.0, itr.second[1] / 1000.0, itr.second[2] / 1000.0);
 	int elemno = 1;
-	for (auto itr : mBeams)
-		mFPMTWriter.addBeamElem(elemno++, itr.mNode1, itr.mNode2, itr.mSectNum, itr.mMatNum);
+	for (auto itr1 : mBeams)
+		for (auto itr : itr1.second)
+			mFPMTWriter.addBeamElem(elemno++, itr.mNode1, itr.mNode2, itr.mSectNum, itr.mMatNum);
 	for (auto itr : mSolids)
 		mFPMTWriter.addSolidElem(elemno++, itr.mNode1, itr.mNode2, itr.mNode3, itr.mNode4, itr.mMatNum);
 	for (auto itr : mShells)

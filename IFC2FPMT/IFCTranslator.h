@@ -54,15 +54,15 @@ protected:
 	void parseSite(const long long& siteInstance);
 	void parseBuilding(const long long& buildingInstance, Eigen::Matrix4d relativeTMatrix);
 	void parseBuildingStorey(const long long& instance, Eigen::Matrix4d relativeTmatrix);
-	void parseElement(const long long& instance, Eigen::Matrix4d relativeTmatrix,bool isWall);
-	void parseItems(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix,bool isWall);
+	void parseElement(const long long& instance, Eigen::Matrix4d relativeTmatrix, bool isWall);
+	void parseItems(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix, bool isWall);
 	void parseIFCCSGSOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
 	void parseIFCFACEBASEDSURFACEMODEL(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
 	void parseIFCFACETEDBREP(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix);
 	void parseCfsFaces(long long* cfsfacesAggr, int matno, Eigen::Matrix4d relativeTmatrix);
-	void parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix,bool isWall);
-	void parseIFCMAPPEDITEM(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix,bool isWall);
-	
+	void parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix, bool isWall);
+	void parseIFCMAPPEDITEM(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix, bool isWall);
+
 	int recordMatTable(std::wstring matname);
 	int recordSectTable(std::vector<double> vsect);
 	int recordNodeTable(std::vector<double> vnode);
@@ -73,7 +73,7 @@ protected:
 	void record5SolidElement(int no1, int no2, int no3, int no4, int no5, int no6, int no7, int no8, int matno);
 	void resetMappedAttribute();
 	//int recordSectNameTable(std::wstring sectname);
-	
+
 	std::vector<long long> getInstancesByAggr(long long* aggr);
 	std::vector<long long> getInstancesByInstance(long long instance, char* name);
 	std::vector<double> getCoordinate(const long long& instance);
@@ -88,7 +88,8 @@ protected:
 	void writeFPMT();
 
 private:
-
+	std::map<int, double> mElevations;
+	int mStoreyNum = 0;
 	FpmtWriter mFPMTWriter;
 	wchar_t outputpath_[512];
 	std::map<std::vector<double>, int> mSectTable;
@@ -96,12 +97,12 @@ private:
 	std::map<std::wstring, int> mMatTable;
 	//std::set<std::vector<double>> mCrossPoints;
 	std::map<std::vector<double>, int> mNodeTable;
-	std::vector<Beam> mBeams;
+	std::map<int, std::vector<Beam>> mBeams;
 	std::vector<Solid> mSolids;
 	std::vector<Shell> mShells;
 	//用于梁单元的截面
-	double mMappedXscale=1;
-	double mMappedYscale=1;
+	double mMappedXscale = 1;
+	double mMappedYscale = 1;
 	double mMappedAngle = 0;
 
 	//std::vector<double> getBeamRectSect(const long long& elemInstance);
@@ -111,13 +112,11 @@ private:
 	//std::vector<double> getColumnCoordinates(const long long& elemInstance);
 	//double getBeamCalcuLength(const long long& elemInstance);
 	//double getBeamRealLength(const long long& elemInstance);
-	
+
 	//std::vector<BeamElement> getBeams(const long long& ElemInstance);
 	//std::vector<double> getCrossPoint(BeamElement elem1, BeamElement elem2);
 	//void splitBeam(BeamElement& e, std::vector<BeamElement> v);
 	//void splitBeams(std::vector<BeamElement>& v);
 	//void setBeams(const std::vector <BeamElement>& velem);
-
-	
 };
 

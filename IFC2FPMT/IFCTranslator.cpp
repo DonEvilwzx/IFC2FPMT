@@ -144,7 +144,7 @@ vector<double> getParamByline(double x0,double y0,double x1,double y1)
 	x0*y1 - x1 * y0
 	};
 }
-//求两条直线的交点
+//求两个Beam的交点
 std::vector<double> IFCTranslator::getBeamCrossPoint(Beam elem1, Beam elem2)
 {
 	std::vector<double> e1n1 = mNodeTable[elem1.mNode1];
@@ -158,13 +158,6 @@ std::vector<double> IFCTranslator::getBeamCrossPoint(Beam elem1, Beam elem2)
 	if (abs(z3-z4)>ERRORDOUBLE)
 	{
 		return {};
-		//if (abs(x3-x4)<ERRORTHICK&&abs(y3-y4)< ERRORTHICK)
-		//{
-		//	double x = x3;
-		//	double y = y3;
-		//	if (abs((y - y1)*(x2 - x) - (x - x1)*(y2 - y)) < ERRORDOUBLE)
-		//		return { x,y,z };
-		//}
 	}
 	else 
 	{
@@ -177,7 +170,16 @@ std::vector<double> IFCTranslator::getBeamCrossPoint(Beam elem1, Beam elem2)
 			return {};
 		else
 		{
-			return { (b0*c1 - b1 * c0) / D,(a1*c0 - a0 * c1) / D,z };
+			double x = (b0*c1 - b1 * c0) / D, y = (a1*c0 - a0 * c1) / D;
+			if (isPointSplitLine({ x1,y1 }, { x2,y2 },{ x,y }) || equalThick({ x,y }, { x1,y1 }) || equalThick({ x,y }, { x2,y2 }))
+			{
+				if (isPointSplitLine({ x3,y3 }, { x4,y4 }, { x,y }) || equalThick({ x,y }, { x3,y3 }) || equalThick({ x,y }, { x4,y4 }))
+				{
+					return { x,y,z };
+				}
+				
+			}
+			
 		}
 	}
 	return {};

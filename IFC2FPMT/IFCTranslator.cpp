@@ -239,7 +239,8 @@ bool IFCTranslator::findNodeTable(std::vector<double> vnode)
 	}
 	return false;
 }
-int IFCTranslator::recordNodeTable(std::vector<double> vnode)
+
+int IFCTranslator::recordNodeTable(std::vector<double> vnode,bool isConsiderThick)
 {
 	if (abs(vnode[2] - mElevations[mStoreyNum]) < ERRORDOUBLE)
 	{
@@ -249,11 +250,23 @@ int IFCTranslator::recordNodeTable(std::vector<double> vnode)
 	bool isFind = false;
 	for (auto node : mNodeTable)
 	{
-		if (equalDouble(node.second, vnode))
+		if (!isConsiderThick)
 		{
-			isFind = true;
-			nodeno = node.first;
-			break;
+			if (equalDouble(node.second, vnode))
+			{
+				isFind = true;
+				nodeno = node.first;
+				break;
+			}
+		}
+		else
+		{
+			if (equalThick(node.second, vnode))
+			{
+				isFind = true;
+				nodeno = node.first;
+				break;
+			}
 		}
 	}
 	if (!isFind)
@@ -263,15 +276,6 @@ int IFCTranslator::recordNodeTable(std::vector<double> vnode)
 		mNodeTable[nodeno] = vnode;
 	}
 	return nodeno;
-	//if (mNodeTable.find(vnode) == mNodeTable.end())
-	//{
-	//	int n = mNodeTable.size();
-	//	nodeno = n + 1;
-	//	mNodeTable[vnode] = nodeno;
-	//}
-	//else
-	//	nodeno = mNodeTable[vnode];
-	//return nodeno;
 }
 
 int IFCTranslator::recordSectTable(std::vector<double> vsect)
@@ -357,11 +361,13 @@ void IFCTranslator::recordBeamByVector(Eigen::Vector4d node1, Eigen::Vector4d no
 {
 	Beam elem;
 	elem.mMatNum = matno;
-
 	elem.mSectNum = sectno;
 	elem.mNode1 = {node1(0),node1(1),node1(2)};
-	elem.mNode2 = { node2(0),node2(1),node2(2)};
-	mBeams[mStoreyNum].push_back(elem);
+	elem.mNode2 = {node2(0),node2(1),node2(2)};
+	if (abs(node1(2) - node2(2)) < ERRORDOUBLE)
+		mBeams[mStoreyNum].push_back(elem);
+	else
+		mColumns[mStoreyNum].push_back(elem);
 }
 void IFCTranslator::record5SolidElement(int no1, int no2, int no3, int no4, int no5, int no6, int no7, int no8, int matno)
 {
@@ -372,13 +378,37 @@ void IFCTranslator::record5SolidElement(int no1, int no2, int no3, int no4, int 
 	recordSolidElement(no5, no7, no8, no3, matno);
 	recordSolidElement(no2, no3, no5, no8, matno);
 }
+
 void IFCTranslator::recordAllNode()
 {
-	for(int i=0;i<mBeams.size();i++)
+	for(int i=0;i<mStoreyNum;i++)
 		for (int j=0;j<mBeams[i].size();j++)
 		{
 			mBeams[i][j].mNodeNum1 = recordNodeTable(mBeams[i][j].mNode1);
 			mBeams[i][j].mNodeNum2 = recordNodeTable(mBeams[i][j].mNode2);
+		}
+	for (int i = 0; i <mStoreyNum; i++)
+		for (int j = 0; j < mColumns[i].size(); j++)
+		{
+			mColumns[i][j].mNodeNum1 = recordNodeTable(mColumns[i][j].mNode1,true);
+			mColumns[i][j].mNodeNum2 = recordNodeTable(mColumns[i][j].mNode2,true);
+			if (i == 0 || i == 1)
+			{
+				if (mNodeTable[mColumns[i][j].mNodeNum2][2] > mNodeTable[mColumns[i][j].mNodeNum1][2])
+				{
+					mNodeTable[mColumns[i][j].mNodeNum1][0] = mNodeTable[mColumns[i][j].mNodeNum2][0];
+					mNodeTable[mColumns[i][j].mNodeNum1][1] = mNodeTable[mColumns[i][j].mNodeNum2][1];
+					mColumns[i][j].mNode1 = mNodeTable[mColumns[i][j].mNodeNum1];
+					mColumns[i][j].mNode2 = mNodeTable[mColumns[i][j].mNodeNum2];
+				}
+				else
+				{
+					mNodeTable[mColumns[i][j].mNodeNum2][0] = mNodeTable[mColumns[i][j].mNodeNum1][0];
+					mNodeTable[mColumns[i][j].mNodeNum2][1] = mNodeTable[mColumns[i][j].mNodeNum1][1];
+					mColumns[i][j].mNode1 = mNodeTable[mColumns[i][j].mNodeNum1];
+					mColumns[i][j].mNode2 = mNodeTable[mColumns[i][j].mNodeNum2];
+				}
+			}
 		}
 }
 void IFCTranslator::parseIFCCSGSOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix)
@@ -609,9 +639,9 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 void IFCTranslator::recordShellElement(int n1, int n2, int n3, int matno, int sectno)
 {
 	Shell shell;
-	shell.mNode1 = n1;
-	shell.mNode2 = n2;
-	shell.mNode3 = n3;
+	shell.mNodeNum1 = n1;
+	shell.mNodeNum2 = n2;
+	shell.mNodeNum3 = n3;
 	shell.mMatNum = matno;
 	shell.mSectNum = sectno;
 	mShells.push_back(shell);
@@ -1073,14 +1103,19 @@ void IFCTranslator::writeFPMT()
 	for (auto itr : mNodeTable)
 		mFPMTWriter.addNode(itr.first, itr.second[0] / 1000.0, itr.second[1] / 1000.0, itr.second[2] / 1000.0);
 	int elemno = 1;
-	for (auto itr1 : mBeams)
-		for (auto itr : itr1.second)
-			mFPMTWriter.addBeamElem(elemno++, itr.mNodeNum1, itr.mNodeNum2, itr.mSectNum, itr.mMatNum);
-	for (auto itr : mSolids)
+	
+	for (auto storeyBeams : mBeams)
+		for (auto beam : storeyBeams.second)
+			mFPMTWriter.addBeamElem(elemno++, beam.mNodeNum1, beam.mNodeNum2, beam.mSectNum, beam.mMatNum);
+
+	for (auto storeyColumns : mColumns)
+		for (auto column : storeyColumns.second)
+			mFPMTWriter.addBeamElem(elemno++, column.mNodeNum1, column.mNodeNum2, column.mSectNum, column.mMatNum);
+	
 	for (auto itr : mSolids)
 		mFPMTWriter.addSolidElem(elemno++, itr.mNode1, itr.mNode2, itr.mNode3, itr.mNode4, itr.mMatNum);
 	for (auto itr : mShells)
-		mFPMTWriter.addShellElem(elemno++, itr.mNode1, itr.mNode2, itr.mNode3, itr.mSectNum, itr.mMatNum);
+		mFPMTWriter.addShellElem(elemno++, itr.mNodeNum1, itr.mNodeNum2, itr.mNodeNum3, itr.mSectNum, itr.mMatNum);
 	mFPMTWriter.writeFPMT(outputpath_);
 }
 

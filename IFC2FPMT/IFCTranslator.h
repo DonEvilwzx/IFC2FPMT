@@ -34,9 +34,10 @@ struct Solid
 
 struct Shell
 {
-	int mNode1;
-	int mNode2;
-	int mNode3;
+	
+	int mNodeNum1;
+	int mNodeNum2;
+	int mNodeNum3;
 	int mSectNum;
 	int mMatNum;
 };
@@ -66,7 +67,7 @@ protected:
 	void parseIFCMAPPEDITEM(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix, bool isWall);
 	int recordMatTable(std::wstring matname);
 	int recordSectTable(std::vector<double> vsect);
-	int recordNodeTable(std::vector<double> vnode);
+	int recordNodeTable(std::vector<double> vnode,bool isConsiderThick=false);
 	bool findNodeTable(std::vector<double> vnode);
 	int recordNodeTableByVector(Eigen::Vector4d v);
 	void recordBeamElement(int n1, int n2, int matno, int sectno);
@@ -108,6 +109,7 @@ private:
 	//std::set<std::vector<double>> mCrossPoints;
 	std::map<int, std::vector<double>> mNodeTable;
 	std::map<int, std::vector<Beam>> mBeams;
+	std::map<int, std::vector<Beam>> mColumns;
 	std::vector<Solid> mSolids;
 	std::vector<Shell> mShells;
 	//用于梁单元的截面

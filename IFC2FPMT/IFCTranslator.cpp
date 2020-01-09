@@ -147,13 +147,13 @@ vector<double> getParamByline(double x0,double y0,double x1,double y1)
 //求两个Beam的交点
 std::vector<double> IFCTranslator::getBeamCrossPoint(Beam elem1, Beam elem2)
 {
-	std::vector<double> e1n1 = mNodeTable[elem1.mNode1];
-	std::vector<double> e1n2 = mNodeTable[elem1.mNode2];
+	std::vector<double> e1n1 = elem1.mNode1;
+	std::vector<double> e1n2 = elem1.mNode2;
 	double x1 = e1n1[0],y1=e1n1[1], z1 = e1n1[2],x2=e1n2[0],y2=e1n2[1],z2=e1n2[2];
 	if (abs(z1-z2)>ERRORDOUBLE)return{};   //如果不是梁，返回空集{};
 	double z = z1;
-	std::vector<double> e2n1 = mNodeTable[elem2.mNode1];
-	std::vector<double> e2n2 = mNodeTable[elem2.mNode2];
+	std::vector<double> e2n1 = elem2.mNode1;
+	std::vector<double> e2n2 = elem2.mNode2;
 	double x3 = e2n1[0], y3 = e2n1[1],z3=e2n1[2], x4 = e2n2[0], y4 = e2n2[1],z4=e2n2[2];
 	if (abs(z3-z4)>ERRORDOUBLE)
 	{
@@ -349,11 +349,20 @@ void IFCTranslator::recordBeamElement(int n1, int n2, int matno, int sectno)
 	elem.mMatNum = matno;
 
 	elem.mSectNum = sectno;
-	elem.mNode1 = n1;
-	elem.mNode2 = n2;
+	elem.mNodeNum1 = n1;
+	elem.mNodeNum2 = n2;
 	mBeams[mStoreyNum].push_back(elem);
 }
+void IFCTranslator::recordBeamByVector(Eigen::Vector4d node1, Eigen::Vector4d node2, int matno, int sectno)
+{
+	Beam elem;
+	elem.mMatNum = matno;
 
+	elem.mSectNum = sectno;
+	elem.mNode1 = {node1(0),node1(1),node1(2)};
+	elem.mNode2 = { node2(0),node2(1),node2(2)};
+	mBeams[mStoreyNum].push_back(elem);
+}
 void IFCTranslator::record5SolidElement(int no1, int no2, int no3, int no4, int no5, int no6, int no7, int no8, int matno)
 {
 	//将长方体分割成5个四面体单元
@@ -363,7 +372,15 @@ void IFCTranslator::record5SolidElement(int no1, int no2, int no3, int no4, int 
 	recordSolidElement(no5, no7, no8, no3, matno);
 	recordSolidElement(no2, no3, no5, no8, matno);
 }
-
+void IFCTranslator::recordAllNode()
+{
+	for(int i=0;i<mBeams.size();i++)
+		for (int j=0;j<mBeams[i].size();j++)
+		{
+			mBeams[i][j].mNodeNum1 = recordNodeTable(mBeams[i][j].mNode1);
+			mBeams[i][j].mNodeNum2 = recordNodeTable(mBeams[i][j].mNode2);
+		}
+}
 void IFCTranslator::parseIFCCSGSOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix)
 {
 	long long treeRootInstance;
@@ -459,6 +476,7 @@ void IFCTranslator::parseCfsFaces(long long* cfsfacesAggr, int matno, Eigen::Mat
 			vnodes[5], vnodes[6], vnodes[7], matno);
 	}
 }
+
 void IFCTranslator::parseIFCFACEBASEDSURFACEMODEL(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix)
 {
 	long long* fbsmFacesAggr;
@@ -551,9 +569,10 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 			sectno = recordSectTable({ 1,b,h,mMappedAngle });
 			Vector4d worldNode1 = relativeTmatrix * localTmatrix*node1;
 			Vector4d worldNode2 = relativeTmatrix * localTmatrix*node2;
-			int no1 = recordNodeTableByVector(worldNode1);
-			int no2 = recordNodeTableByVector(worldNode2);
-			recordBeamElement(no1, no2, matno, sectno);
+			recordBeamByVector(worldNode1, worldNode2, matno, sectno);
+			//int no1 = recordNodeTableByVector(worldNode1);
+			//int no2 = recordNodeTableByVector(worldNode2);
+			//recordBeamElement(no1, no2, matno, sectno);
 		}
 	}
 	//else if (areaName == "IFCARBITRARYCLOSEDPROFILEDEF")
@@ -739,37 +758,33 @@ void IFCTranslator::splitBeams()
 		int storeyBeamCnt = mBeams[i].size();
 		while(j<storeyBeamCnt)
 		{
-			vector<double> node1 = mNodeTable[mBeams[i][j].mNode1];
-			vector<double> node2 = mNodeTable[mBeams[i][j].mNode2];
+			if (equalThick(mBeams[i][j].mNode1, mBeams[i][j].mNode2))continue;
 			int tempStoreyBeamCnt = storeyBeamCnt;
 			for (int k=0;k<tempStoreyBeamCnt;k++)
 			{
 				vector<double> crossPoint = getBeamCrossPoint(mBeams[i][j], mBeams[i][k]);
 				if (crossPoint.size() > 0)
 				{
-					if (equalDouble(crossPoint, node1) || equalDouble(crossPoint, node2))
+					if (equalDouble(crossPoint, mBeams[i][j].mNode1) || equalDouble(crossPoint, mBeams[i][j].mNode2))
 						continue;
-					if (isPointSplitLine( node1, node2,crossPoint))
+					if (isPointSplitLine(mBeams[i][j].mNode1, mBeams[i][j].mNode2,crossPoint))
 					{
-						int n3 = recordNodeTable(crossPoint);
-						int oldn2 = mBeams[i][j].mNode2;
-						mBeams[i][j].mNode2 = n3;
-						node2 = crossPoint;
 						Beam newbeam;
-						newbeam.mNode1 = n3;
-						newbeam.mNode2 = oldn2;
+						newbeam.mNode1 = crossPoint;
+						newbeam.mNode2 = mBeams[i][j].mNode2;
 						newbeam.mMatNum = mBeams[i][j].mMatNum;
 						newbeam.mSectNum = mBeams[i][j].mSectNum;
 						mBeams[i].push_back(newbeam);
+						mBeams[i][j].mNode2 = crossPoint;
 						++storeyBeamCnt;
 					}
-					else if (equalThick(crossPoint, node1))
+					else if (equalThick(crossPoint, mBeams[i][j].mNode1))
 					{
-						mBeams[i][j].mNode1 = recordNodeTable(crossPoint);
+						mBeams[i][j].mNode1 = crossPoint;
 					}
-					else if (equalThick(crossPoint, node2))
+					else if (equalThick(crossPoint, mBeams[i][j].mNode2))
 					{
-						mBeams[i][j].mNode2 = recordNodeTable(crossPoint);
+						mBeams[i][j].mNode2 = crossPoint;
 					}
 				}
 			}
@@ -1000,8 +1015,8 @@ void IFCTranslator::translateNewVersion(CString ifcFileName, std::basic_string<w
 		for (auto buildingInstance : buildingInstances)
 			parseBuilding(buildingInstance, Matrix4d::Identity());
 	}
-
 	splitBeams();
+	recordAllNode();
 	writeFPMT();
 }
 
@@ -1060,7 +1075,7 @@ void IFCTranslator::writeFPMT()
 	int elemno = 1;
 	for (auto itr1 : mBeams)
 		for (auto itr : itr1.second)
-			mFPMTWriter.addBeamElem(elemno++, itr.mNode1, itr.mNode2, itr.mSectNum, itr.mMatNum);
+			mFPMTWriter.addBeamElem(elemno++, itr.mNodeNum1, itr.mNodeNum2, itr.mSectNum, itr.mMatNum);
 	for (auto itr : mSolids)
 	for (auto itr : mSolids)
 		mFPMTWriter.addSolidElem(elemno++, itr.mNode1, itr.mNode2, itr.mNode3, itr.mNode4, itr.mMatNum);

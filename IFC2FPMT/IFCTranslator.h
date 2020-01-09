@@ -8,10 +8,12 @@
 #include<Eigen/Cholesky>
 struct Beam
 {
-	int mNode1;
-	int mNode2;
+	int mNodeNum1;
+	int mNodeNum2;
 	int mSectNum;
 	int mMatNum;
+	std::vector<double> mNode1;
+	std::vector<double> mNode2;
 };
 struct Truss
 {
@@ -68,10 +70,14 @@ protected:
 	bool findNodeTable(std::vector<double> vnode);
 	int recordNodeTableByVector(Eigen::Vector4d v);
 	void recordBeamElement(int n1, int n2, int matno, int sectno);
+	void recordBeamByVector(Eigen::Vector4d node1, Eigen::Vector4d node2, int matno, int sectno);
 	void recordShellElement(int n1, int n2, int n3, int matno, int sectno);
 	void recordSolidElement(int n1, int n2, int n3, int n4, int matno);
 	void record5SolidElement(int no1, int no2, int no3, int no4, int no5, int no6, int no7, int no8, int matno);
+	void recordAllNode();
 	void resetMappedAttribute();
+	
+	
 	//int recordSectNameTable(std::wstring sectname);
 
 	std::vector<long long> getInstancesByAggr(long long* aggr);

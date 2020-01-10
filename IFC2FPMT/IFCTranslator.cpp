@@ -144,7 +144,7 @@ vector<double> getParamByline(double x0,double y0,double x1,double y1)
 	x0*y1 - x1 * y0
 	};
 }
-//求两个Beam的交点
+//求两个梁的交点，若不存在，则返回空集
 std::vector<double> IFCTranslator::getBeamCrossPoint(Beam elem1, Beam elem2)
 {
 	std::vector<double> e1n1 = elem1.mNode1;
@@ -190,7 +190,6 @@ void IFCTranslator::test1()
 	setOutputpath(_T("output.fpmt"));
 	//std::basic_string<wchar_t> ifcSchemaName = L"IFC2X3_TC1.exp";
 	std::basic_string<wchar_t> ifcSchemaName = L"IFC4_ADD2.exp";
-
 	//2_3版本
 	//CString m_path = _T("10层框架.ifc");
 	//CString m_path = _T("安中大楼.ifc");
@@ -200,7 +199,6 @@ void IFCTranslator::test1()
 	//CString m_path = _T("小高层商住楼.0001.ifc");
 	//CString m_path = _T("03IDC.ifc");
 	//CString m_path = _T("别墅项目.ifc");
-
 	//4_2版本
 	//CString m_path = _T("CSGprimitive.ifc");
 	//CString m_path = _T("ExtrudedSolid.ifc");
@@ -228,6 +226,7 @@ int IFCTranslator::recordMatTable(std::wstring matname)
 		matno = mMatTable[matname];
 	return matno;
 }
+
 bool IFCTranslator::findNodeTable(std::vector<double> vnode)
 {
 	for (auto node : mNodeTable)
@@ -242,10 +241,6 @@ bool IFCTranslator::findNodeTable(std::vector<double> vnode)
 
 int IFCTranslator::recordNodeTable(std::vector<double> vnode,bool isConsiderThick)
 {
-	if (abs(vnode[2] - mElevations[mStoreyNum]) < ERRORDOUBLE)
-	{
-		vnode[2] = mElevations[mStoreyNum];
-	}
 	int nodeno;
 	bool isFind = false;
 	for (auto node : mNodeTable)
@@ -384,6 +379,11 @@ void IFCTranslator::recordAllNode()
 	for(int i=0;i<mStoreyNum;i++)
 		for (int j=0;j<mBeams[i].size();j++)
 		{
+			if (abs(mBeams[i][j].mNode1[2] - mElevations[i]) < ERRORTHICK)
+			{
+				mBeams[i][j].mNode1[2] = mElevations[i];
+				mBeams[i][j].mNode2[2] = mElevations[i];
+			}
 			mBeams[i][j].mNodeNum1 = recordNodeTable(mBeams[i][j].mNode1);
 			mBeams[i][j].mNodeNum2 = recordNodeTable(mBeams[i][j].mNode2);
 		}
@@ -398,16 +398,14 @@ void IFCTranslator::recordAllNode()
 				{
 					mNodeTable[mColumns[i][j].mNodeNum1][0] = mNodeTable[mColumns[i][j].mNodeNum2][0];
 					mNodeTable[mColumns[i][j].mNodeNum1][1] = mNodeTable[mColumns[i][j].mNodeNum2][1];
-					mColumns[i][j].mNode1 = mNodeTable[mColumns[i][j].mNodeNum1];
-					mColumns[i][j].mNode2 = mNodeTable[mColumns[i][j].mNodeNum2];
 				}
 				else
 				{
 					mNodeTable[mColumns[i][j].mNodeNum2][0] = mNodeTable[mColumns[i][j].mNodeNum1][0];
 					mNodeTable[mColumns[i][j].mNodeNum2][1] = mNodeTable[mColumns[i][j].mNodeNum1][1];
-					mColumns[i][j].mNode1 = mNodeTable[mColumns[i][j].mNodeNum1];
-					mColumns[i][j].mNode2 = mNodeTable[mColumns[i][j].mNodeNum2];
 				}
+				mColumns[i][j].mNode1 = mNodeTable[mColumns[i][j].mNodeNum1];
+				mColumns[i][j].mNode2 = mNodeTable[mColumns[i][j].mNodeNum2];
 			}
 		}
 }
@@ -821,7 +819,6 @@ void IFCTranslator::splitBeams()
 			++j;
 		}
 	}
-
 }
 
 void IFCTranslator::parseBuildingStorey(const long long& instance, Eigen::Matrix4d relativeTmatrix)
@@ -1114,8 +1111,10 @@ void IFCTranslator::writeFPMT()
 	
 	for (auto itr : mSolids)
 		mFPMTWriter.addSolidElem(elemno++, itr.mNode1, itr.mNode2, itr.mNode3, itr.mNode4, itr.mMatNum);
+
 	for (auto itr : mShells)
 		mFPMTWriter.addShellElem(elemno++, itr.mNodeNum1, itr.mNodeNum2, itr.mNodeNum3, itr.mSectNum, itr.mMatNum);
+
 	mFPMTWriter.writeFPMT(outputpath_);
 }
 

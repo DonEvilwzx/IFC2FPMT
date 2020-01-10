@@ -15,6 +15,19 @@ struct Beam
 	std::vector<double> mNode1;
 	std::vector<double> mNode2;
 };
+
+struct Shell
+{
+	int mNodeNum1;
+	int mNodeNum2;
+	int mNodeNum3;
+	int mSectNum;
+	int mMatNum;
+	std::vector<double> mNode1;
+	std::vector<double> mNode2;
+	std::vector<double> mNode3;
+};
+
 struct Truss
 {
 	int mNode1;
@@ -31,17 +44,6 @@ struct Solid
 	int mNode4;
 	int mMatNum;
 };
-
-struct Shell
-{
-	
-	int mNodeNum1;
-	int mNodeNum2;
-	int mNodeNum3;
-	int mSectNum;
-	int mMatNum;
-};
-
 
 class IFCTranslator
 {

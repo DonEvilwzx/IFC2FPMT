@@ -39,6 +39,9 @@
     <ClInclude Include="IFCTranslator.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="IFCWriter.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IFC2FPMT.cpp">
@@ -57,6 +60,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="IFCTranslator.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="IFCWriter.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

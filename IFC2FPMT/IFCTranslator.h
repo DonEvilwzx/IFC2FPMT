@@ -6,6 +6,8 @@
 #include <list>
 #include<Eigen/Dense>
 #include<Eigen/Cholesky>
+
+enum  buildingType { FrameWork, ShearWall };
 struct Beam
 {
 	int mNodeNum1;
@@ -16,16 +18,26 @@ struct Beam
 	std::vector<double> mNode2;
 };
 
+struct Wall
+{
+	int mSectNum;
+	int mMatNum;
+	std::vector<double> mNode1;
+	std::vector<double> mNode2;
+	//std::vector<double> mNode3;
+	//std::vector<double> mNode4;
+};
+
 struct Shell
 {
+	std::vector<double> mNode1;
+	std::vector<double> mNode2;
+	std::vector<double> mNode3;
 	int mNodeNum1;
 	int mNodeNum2;
 	int mNodeNum3;
 	int mSectNum;
 	int mMatNum;
-	std::vector<double> mNode1;
-	std::vector<double> mNode2;
-	std::vector<double> mNode3;
 };
 
 struct Truss
@@ -54,7 +66,7 @@ public:
 	void test1();
 protected:
 	//void translateOldVersion(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName);
-	void translateNewVersion(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName);
+	void translateNewVersion(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName,buildingType bt=FrameWork);
 
 	void parseSite(const long long& siteInstance);
 	void parseBuilding(const long long& buildingInstance, Eigen::Matrix4d relativeTMatrix);
@@ -72,12 +84,20 @@ protected:
 	int recordNodeTable(std::vector<double> vnode,bool isConsiderThick=false);
 	bool findNodeTable(std::vector<double> vnode);
 	int recordNodeTableByVector(Eigen::Vector4d v);
-	void recordBeamElement(int n1, int n2, int matno, int sectno);
+	//void recordBeam(int n1, int n2, int matno, int sectno);
 	void recordBeamByVector(Eigen::Vector4d node1, Eigen::Vector4d node2, int matno, int sectno);
-	void recordShellElement(int n1, int n2, int n3, int matno, int sectno);
+	void recordShell(std::vector<double> node1, std::vector<double> node2,std::vector<double> node3, int matno, int sectno);
+	void recordShellsByWalls();
+	void recordShellByWall(Wall wall);
+	
+
+	void recordWall(std::vector<double> node1, std::vector<double> node2, /*std::vector<double> node3, std::vector<double> node4,*/ int matno, int sectno);
+	void recordWallByVector(Eigen::Vector4d node1, Eigen::Vector4d node2,/* Eigen::Vector4d node3, Eigen::Vector4d node4,*/ int matno, int sectno);
+	
 	void recordSolidElement(int n1, int n2, int n3, int n4, int matno);
 	void record5SolidElement(int no1, int no2, int no3, int no4, int no5, int no6, int no7, int no8, int matno);
-	void recordAllNode();
+	void recordBeamNodes();
+	void recordShellNodes();
 	void resetMappedAttribute();
 	
 	
@@ -112,13 +132,15 @@ private:
 	std::map<int, std::vector<double>> mNodeTable;
 	std::map<int, std::vector<Beam>> mBeams;
 	std::map<int, std::vector<Beam>> mColumns;
+	std::vector<Wall> mWalls;
 	std::vector<Solid> mSolids;
 	std::vector<Shell> mShells;
 	//用于梁单元的截面
 	double mMappedXscale = 1;
 	double mMappedYscale = 1;
 	double mMappedAngle = 0;
-
+	
+	buildingType mBuilidngType = FrameWork;
 	//std::vector<double> getBeamRectSect(const long long& elemInstance);
 	//std::vector<double> getColumnRectSect(const long long& elemInstance);
 	//std::wstring getSectName(const long long& elemInstance);

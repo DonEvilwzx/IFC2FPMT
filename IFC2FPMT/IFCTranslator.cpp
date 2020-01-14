@@ -7,13 +7,11 @@
 #include "ifcengine/include/engine.h"
 #include "ifcengine/include/ifcengine.h"
 
-
-
 using namespace std;
 using namespace Eigen;
 const double ERRORTHICK = 800;
 const double ERRORDOUBLE = 0.01;
-
+const double SPLITLENGTH = 1000;
 IFCTranslator::~IFCTranslator()
 {
 }
@@ -193,10 +191,10 @@ void IFCTranslator::test1()
 	//2_3版本
 	//CString m_path = _T("10层框架.ifc");
 	//CString m_path = _T("安中大楼.ifc");
-	CString m_path = _T("教学楼项目.ifc");
+	//CString m_path = _T("教学楼项目.ifc");
 	//CString m_path = _T("15#梁柱.0001.ifc");
 	//CString m_path = _T("公益小桥.ifc");
-	//CString m_path = _T("小高层商住楼.0001.ifc");
+	CString m_path = _T("小高层商住楼.0001.ifc");
 	//CString m_path = _T("03IDC.ifc");
 	//CString m_path = _T("别墅项目.ifc");
 	//4_2版本
@@ -209,8 +207,10 @@ void IFCTranslator::test1()
 	//CString m_path = _T("MappedMulti.ifc");
 	//CString m_path = _T("BeamStandard.ifc");
 	//CString m_path = _T("Wall.ifc");
-	//translateNewVersion(m_path, ifcSchemaName_IFC4_2);
-	translateNewVersion(m_path, ifcSchemaName);
+	
+	
+	//translateNewVersion(m_path, ifcSchemaName, FrameWork);
+	translateNewVersion(m_path, ifcSchemaName,ShearWall);
 }
 
 int IFCTranslator::recordMatTable(std::wstring matname)
@@ -342,15 +342,34 @@ void IFCTranslator::recordSolidElement(int n1, int n2, int n3, int n4, int matno
 	mSolids.push_back(elem);
 }
 
-void IFCTranslator::recordBeamElement(int n1, int n2, int matno, int sectno)
-{
-	Beam elem;
-	elem.mMatNum = matno;
+//void IFCTranslator::recordBeam(int n1, int n2, int matno, int sectno)
+//{
+//	Beam elem;
+//	elem.mMatNum = matno;
+//	elem.mSectNum = sectno;
+//	elem.mNodeNum1 = n1;
+//	elem.mNodeNum2 = n2;
+//	mBeams[mStoreyNum].push_back(elem);
+//}
 
-	elem.mSectNum = sectno;
-	elem.mNodeNum1 = n1;
-	elem.mNodeNum2 = n2;
-	mBeams[mStoreyNum].push_back(elem);
+void IFCTranslator::recordWall(std::vector<double> node1, std::vector<double> node2,/* std::vector<double> node3, std::vector<double> node4,*/ int matno, int sectno)
+{
+	Wall wall;
+	wall.mMatNum = matno;
+	wall.mSectNum = sectno;
+	wall.mNode1 = node1;
+	wall.mNode2 = node2;
+	//wall.mNode3 = node3;
+	//wall.mNode4 = node4;
+	mWalls.push_back(wall);
+}
+void IFCTranslator::recordWallByVector(Eigen::Vector4d node1, Eigen::Vector4d node2, /*Eigen::Vector4d node3, Eigen::Vector4d node4, */int matno, int sectno)
+{
+	vector<double> node11 = { node1(0),node1(1),node1(2) };
+	vector<double> node22 = { node2(0),node2(1),node2(2) };
+	//vector<double> node33 = { node3(0),node3(1),node3(2) };
+	//vector<double> node44 = { node4(0),node4(1),node4(2) };
+	recordWall(node11, node22,/* node33, node44,*/ matno, sectno);
 }
 void IFCTranslator::recordBeamByVector(Eigen::Vector4d node1, Eigen::Vector4d node2, int matno, int sectno)
 {
@@ -374,7 +393,7 @@ void IFCTranslator::record5SolidElement(int no1, int no2, int no3, int no4, int 
 	recordSolidElement(no2, no3, no5, no8, matno);
 }
 
-void IFCTranslator::recordAllNode()
+void IFCTranslator::recordBeamNodes()
 {
 	for(int i=0;i<mStoreyNum;i++)
 		for (int j=0;j<mBeams[i].size();j++)
@@ -409,6 +428,17 @@ void IFCTranslator::recordAllNode()
 			}
 		}
 }
+
+void IFCTranslator::recordShellNodes()
+{
+	for (int i = 0; i < mShells.size(); i++)
+	{
+		mShells[i].mNodeNum1 = recordNodeTable(mShells[i].mNode1);
+		mShells[i].mNodeNum2 = recordNodeTable(mShells[i].mNode2);
+		mShells[i].mNodeNum3 = recordNodeTable(mShells[i].mNode3);
+	}
+}
+
 void IFCTranslator::parseIFCCSGSOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix)
 {
 	long long treeRootInstance;
@@ -577,16 +607,17 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 				node12(0) = node22(0) = sectx / 2;
 			}
 			Vector4d worldNode11 = relativeTmatrix * localTmatrix*node11;
-			Vector4d worldNode12 = relativeTmatrix * localTmatrix*node12;
-			Vector4d worldNode21 = relativeTmatrix * localTmatrix*node21;
+			//Vector4d worldNode12 = relativeTmatrix * localTmatrix*node12;
+			//Vector4d worldNode21 = relativeTmatrix * localTmatrix*node21;
 			Vector4d worldNode22 = relativeTmatrix * localTmatrix*node22;
-			int no1 = recordNodeTableByVector(worldNode11);
-			int no2 = recordNodeTableByVector(worldNode12);
-			int no3 = recordNodeTableByVector(worldNode21);
-			int no4 = recordNodeTableByVector(worldNode22);
+			//int no1 = recordNodeTableByVector(worldNode11);
+			//int no2 = recordNodeTableByVector(worldNode12);
+			//int no3 = recordNodeTableByVector(worldNode21);
+			//int no4 = recordNodeTableByVector(worldNode22);
 			int sectno = recordSectTable({ 2,t });
-			recordShellElement(no1, no2, no3, matno, sectno);
-			recordShellElement(no2, no3, no4, matno, sectno);
+			recordWallByVector(worldNode11, worldNode22, matno, sectno);
+			//recordShell(no1, no2, no3, matno, sectno);
+			//recordShell(no2, no3, no4, matno, sectno);
 		}
 		else    //如果是梁柱，变为梁单元
 		{
@@ -627,22 +658,63 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 	{
 		Vector4d worldNode1 = relativeTmatrix * localTmatrix*node1;
 		Vector4d worldNode2 = relativeTmatrix * localTmatrix*node2;
-		int no1 = recordNodeTableByVector(worldNode1);
-		int no2 = recordNodeTableByVector(worldNode2);
+		//int no1 = recordNodeTableByVector(worldNode1);
+		//int no2 = recordNodeTableByVector(worldNode2);
 		sectno = recordSectTable({ 1,300,300,0 });
-		recordBeamElement(no1, no2, matno, sectno);
+		recordBeamByVector(worldNode1, worldNode2, matno, sectno);
 	}
 
 }
-void IFCTranslator::recordShellElement(int n1, int n2, int n3, int matno, int sectno)
+void IFCTranslator::recordShell(std::vector<double> node1, std::vector<double> node2, std::vector<double> node3, int matno, int sectno)
 {
 	Shell shell;
-	shell.mNodeNum1 = n1;
-	shell.mNodeNum2 = n2;
-	shell.mNodeNum3 = n3;
+	shell.mNode1 = node1;
+	shell.mNode2 = node2;
+	shell.mNode3 = node3;
 	shell.mMatNum = matno;
 	shell.mSectNum = sectno;
 	mShells.push_back(shell);
+}
+
+void IFCTranslator::recordShellByWall(Wall wall)
+{
+	vector<double> startnode = wall.mNode1;
+	vector<double> endnode = wall.mNode2;
+	double xleng = endnode[0] - startnode[0];
+	double yleng = endnode[1] - startnode[1];
+	double zleng = endnode[2] - startnode[2];
+	int xflag = 1;
+	int yflag = 1;
+	if (xleng < -ERRORDOUBLE)xflag = -1;
+	if (yleng < -ERRORDOUBLE)yflag = -1;
+	int xnum = xleng / SPLITLENGTH;
+	int ynum = yleng / SPLITLENGTH;
+	int znum = zleng / SPLITLENGTH;
+	for (int i = 0; i <= xnum; i++)
+	{
+		vector<double> node1 = { startnode[0] + i * xflag*SPLITLENGTH,startnode[1],startnode[2] };
+		for (int j = 0; j <= ynum; j++)
+		{
+			node1[1] = startnode[1] + j * yflag*SPLITLENGTH;
+			for (int k = 0; k <= znum; k++)
+			{
+				node1[2] = startnode[2] + k * SPLITLENGTH;
+				double x = node1[0] + xflag * SPLITLENGTH;
+				if ((xflag == 1 && x > endnode[0])|| (xflag == -1 && x < endnode[0]))x = endnode[0];
+				double y = node1[1] + yflag * SPLITLENGTH;
+				if ((yflag == 1 && y > endnode[1])|| (yflag == -1 && y < endnode[1]))y = endnode[1];
+				double z = node1[2] + SPLITLENGTH;
+				if (z > endnode[2])z = endnode[2];
+				vector<double> node2 = { x,y,z };
+				if (!equalDouble(node1, node2))
+				{
+					recordShell(node1, { node1[0],node1[1],node2[2] }, { node2[0],node2[1],node1[2] },wall.mMatNum,wall.mSectNum);
+					recordShell({ node1[0],node1[1],node2[2] }, { node2[0],node2[1],node1[2] }, node2, wall.mMatNum, wall.mSectNum);
+				}
+			}
+		}
+	}
+
 }
 
 Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement2D(const long long& instance)
@@ -662,6 +734,11 @@ Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement2D(const long long& 
 			T(i, 3) = pan[i];
 	}
 	return T;
+}
+void IFCTranslator::recordShellsByWalls()
+{
+	for (auto wall : mWalls)
+		recordShellByWall(wall);
 }
 
 Eigen::Matrix4d IFCTranslator::getTMatrixByPositionInstance(const long long& positionInstance)
@@ -1019,8 +1096,9 @@ std::vector<double> IFCTranslator::getCoordinate(const long long & instance)
 		return { 0,0,0 };
 }
 
-void IFCTranslator::translateNewVersion(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName)
+void IFCTranslator::translateNewVersion(CString ifcFileName, std::basic_string<wchar_t> ifcSchemaName,buildingType bt)
 {
+	mBuilidngType = bt;
 	wchar_t fileName[512];
 	memcpy(fileName, ifcFileName, ifcFileName.GetLength() * sizeof(wchar_t));
 	fileName[ifcFileName.GetLength()] = 0;
@@ -1043,7 +1121,9 @@ void IFCTranslator::translateNewVersion(CString ifcFileName, std::basic_string<w
 			parseBuilding(buildingInstance, Matrix4d::Identity());
 	}
 	splitBeams();
-	recordAllNode();
+	recordBeamNodes();
+	recordShellsByWalls();
+	recordShellNodes();
 	writeFPMT();
 }
 

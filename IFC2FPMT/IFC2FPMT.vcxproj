@@ -185,6 +185,7 @@
     <ClInclude Include="ChildView.h" />
     <ClInclude Include="FpmtWriter.h" />
     <ClInclude Include="IFC2FPMT.h" />
+    <ClInclude Include="IFCWriter.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
@@ -195,6 +196,7 @@
     <ClCompile Include="ChildView.cpp" />
     <ClCompile Include="FpmtWriter.cpp" />
     <ClCompile Include="IFC2FPMT.cpp" />
+    <ClCompile Include="IFCWriter.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

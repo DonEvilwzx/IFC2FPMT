@@ -11,7 +11,7 @@ using namespace std;
 using namespace Eigen;
 const double ERRORTHICK = 800;
 const double ERRORDOUBLE = 0.01;
-const double SPLITLENGTH = 1000;
+const int SPLITNUM = 1;
 IFCTranslator::~IFCTranslator()
 {
 }
@@ -24,7 +24,7 @@ std::vector<double> roundv(std::vector<double> v)
 	return rev;
 }
 
-bool equalDouble(std::vector<double> v1, std::vector<double> v2)
+bool equalVectorDouble(std::vector<double> v1, std::vector<double> v2)
 {
 	if (v1.size() != v2.size())return false;
 	int n = v2.size();
@@ -186,8 +186,8 @@ std::vector<double> IFCTranslator::getBeamCrossPoint(Beam elem1, Beam elem2)
 void IFCTranslator::test1()
 {
 	setOutputpath(_T("output.fpmt"));
-	//std::basic_string<wchar_t> ifcSchemaName = L"IFC2X3_TC1.exp";
-	std::basic_string<wchar_t> ifcSchemaName = L"IFC4_ADD2.exp";
+	std::basic_string<wchar_t> ifcSchemaName = L"IFC2X3_TC1.exp";
+	//std::basic_string<wchar_t> ifcSchemaName = L"IFC4_ADD2.exp";
 	//2_3版本
 	//CString m_path = _T("10层框架.ifc");
 	//CString m_path = _T("安中大楼.ifc");
@@ -231,7 +231,7 @@ bool IFCTranslator::findNodeTable(std::vector<double> vnode)
 {
 	for (auto node : mNodeTable)
 	{
-		if (equalDouble(node.second, vnode))
+		if (equalVectorDouble(node.second, vnode))
 		{
 			return true;
 		}
@@ -247,7 +247,7 @@ int IFCTranslator::recordNodeTable(std::vector<double> vnode,bool isConsiderThic
 	{
 		if (!isConsiderThick)
 		{
-			if (equalDouble(node.second, vnode))
+			if (equalVectorDouble(node.second, vnode))
 			{
 				isFind = true;
 				nodeno = node.first;
@@ -279,7 +279,7 @@ int IFCTranslator::recordSectTable(std::vector<double> vsect)
 	bool isFind = false;
 	for (auto sect : mSectTable)
 	{
-		if (equalDouble(sect.first, vsect))
+		if (equalVectorDouble(sect.first, vsect))
 		{
 			isFind = true;
 			sectno = sect.second;
@@ -654,15 +654,18 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 	//	//	}
 	//	//}
 	//}
-	else //其他截面暂做简单处理
-	{
-		Vector4d worldNode1 = relativeTmatrix * localTmatrix*node1;
-		Vector4d worldNode2 = relativeTmatrix * localTmatrix*node2;
-		//int no1 = recordNodeTableByVector(worldNode1);
-		//int no2 = recordNodeTableByVector(worldNode2);
-		sectno = recordSectTable({ 1,300,300,0 });
-		recordBeamByVector(worldNode1, worldNode2, matno, sectno);
-	}
+	//else //其他截面暂作简单处理
+	//{
+	//	if (!isWall)
+	//	{
+	//		Vector4d worldNode1 = relativeTmatrix * localTmatrix*node1;
+	//		Vector4d worldNode2 = relativeTmatrix * localTmatrix*node2;
+	//		//int no1 = recordNodeTableByVector(worldNode1);
+	//		//int no2 = recordNodeTableByVector(worldNode2);
+	//		sectno = recordSectTable({ 1,800,800,0 });
+	//		recordBeamByVector(worldNode1, worldNode2, matno, sectno);
+	//	}
+	//}
 
 }
 void IFCTranslator::recordShell(std::vector<double> node1, std::vector<double> node2, std::vector<double> node3, int matno, int sectno)
@@ -675,6 +678,11 @@ void IFCTranslator::recordShell(std::vector<double> node1, std::vector<double> n
 	shell.mSectNum = sectno;
 	mShells.push_back(shell);
 }
+void IFCTranslator::recordShellByTwoNodes(std::vector<double> node1, std::vector<double> node2,int matno,int sectno)
+{
+	recordShell(node1, { node1[0],node1[1],node2[2] }, { node2[0],node2[1],node1[2] },matno,sectno);
+	recordShell(node2, { node1[0],node1[1],node2[2] }, { node2[0],node2[1],node1[2] },matno,sectno);
+}
 
 void IFCTranslator::recordShellByWall(Wall wall)
 {
@@ -683,38 +691,21 @@ void IFCTranslator::recordShellByWall(Wall wall)
 	double xleng = endnode[0] - startnode[0];
 	double yleng = endnode[1] - startnode[1];
 	double zleng = endnode[2] - startnode[2];
-	int xflag = 1;
-	int yflag = 1;
-	if (xleng < -ERRORDOUBLE)xflag = -1;
-	if (yleng < -ERRORDOUBLE)yflag = -1;
-	int xnum = xleng / SPLITLENGTH;
-	int ynum = yleng / SPLITLENGTH;
-	int znum = zleng / SPLITLENGTH;
-	for (int i = 0; i <= xnum; i++)
-	{
-		vector<double> node1 = { startnode[0] + i * xflag*SPLITLENGTH,startnode[1],startnode[2] };
-		for (int j = 0; j <= ynum; j++)
-		{
-			node1[1] = startnode[1] + j * yflag*SPLITLENGTH;
-			for (int k = 0; k <= znum; k++)
+	double splitx = xleng / SPLITNUM;
+	double splity = yleng / SPLITNUM;
+	double splitz = zleng / SPLITNUM;
+	for(int i=0;i<SPLITNUM;i++)
+		for(int j=0;j<SPLITNUM;j++)
+			for (int k = 0; k < SPLITNUM; k++)
 			{
-				node1[2] = startnode[2] + k * SPLITLENGTH;
-				double x = node1[0] + xflag * SPLITLENGTH;
-				if ((xflag == 1 && x > endnode[0])|| (xflag == -1 && x < endnode[0]))x = endnode[0];
-				double y = node1[1] + yflag * SPLITLENGTH;
-				if ((yflag == 1 && y > endnode[1])|| (yflag == -1 && y < endnode[1]))y = endnode[1];
-				double z = node1[2] + SPLITLENGTH;
-				if (z > endnode[2])z = endnode[2];
-				vector<double> node2 = { x,y,z };
-				if (!equalDouble(node1, node2))
-				{
-					recordShell(node1, { node1[0],node1[1],node2[2] }, { node2[0],node2[1],node1[2] },wall.mMatNum,wall.mSectNum);
-					recordShell({ node1[0],node1[1],node2[2] }, { node2[0],node2[1],node1[2] }, node2, wall.mMatNum, wall.mSectNum);
-				}
+				double x1 = startnode[0] + i * splitx;
+				double y1 = startnode[1] + j * splity;
+				double z1 = startnode[2] + k * splitz;
+				double x2 = startnode[0] +(i+1)* splitx;
+				double y2 = startnode[1] +(j+1)* splity;
+				double z2 = startnode[2] +(k+1)* splitz;
+				recordShellByTwoNodes({ x1,y1,z1 }, { x2,y2,z2 }, wall.mMatNum, wall.mSectNum);
 			}
-		}
-	}
-
 }
 
 Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement2D(const long long& instance)
@@ -870,7 +861,7 @@ void IFCTranslator::splitBeams()
 				vector<double> crossPoint = getBeamCrossPoint(mBeams[i][j], mBeams[i][k]);
 				if (crossPoint.size() > 0)
 				{
-					if (equalDouble(crossPoint, mBeams[i][j].mNode1) || equalDouble(crossPoint, mBeams[i][j].mNode2))
+					if (equalVectorDouble(crossPoint, mBeams[i][j].mNode1) || equalVectorDouble(crossPoint, mBeams[i][j].mNode2))
 						continue;
 					if (isPointSplitLine(mBeams[i][j].mNode1, mBeams[i][j].mNode2,crossPoint))
 					{
@@ -908,12 +899,17 @@ void IFCTranslator::parseBuildingStorey(const long long& instance, Eigen::Matrix
 		for (auto instance : relatedInstances)
 		{
 			string elemtype = engiGetInstanceClassInfoUC(instance);
-
-			if (/*elemtype == "IFCBUILDINGELEMENTPROXY" ||*/ elemtype == "IFCCOLUMN" || elemtype == "IFCBEAMSTANDARDCASE" || elemtype == "IFCBEAM")
-				parseElement(instance, relativeTmatrix*localTmatrix, false);
-			else if (elemtype == "IFCWALL" || elemtype == "IFCWALLSTANDARDCASE" || elemtype == "IFCSLAB")
+			if (mBuilidngType == FrameWork)
 			{
-				//parseElement(instance, relativeTmatrix*localTmatrix, true);
+				if (/*elemtype == "IFCBUILDINGELEMENTPROXY" ||*/ elemtype == "IFCCOLUMN" || elemtype == "IFCBEAMSTANDARDCASE" || elemtype == "IFCBEAM")
+					parseElement(instance, relativeTmatrix*localTmatrix, false);
+			}
+			else if (mBuilidngType == ShearWall)
+			{
+				if (elemtype == "IFCWALL" || elemtype == "IFCWALLSTANDARDCASE" || elemtype == "IFCSLAB")
+				{
+					parseElement(instance, relativeTmatrix*localTmatrix, true);
+				}
 			}
 		}
 	}
@@ -1120,10 +1116,16 @@ void IFCTranslator::translateNewVersion(CString ifcFileName, std::basic_string<w
 		for (auto buildingInstance : buildingInstances)
 			parseBuilding(buildingInstance, Matrix4d::Identity());
 	}
-	splitBeams();
-	recordBeamNodes();
-	recordShellsByWalls();
-	recordShellNodes();
+	if (mBuilidngType == FrameWork)
+	{
+		splitBeams();
+		recordBeamNodes();
+	}
+	else if (mBuilidngType == ShearWall)
+	{
+		recordShellsByWalls();
+		recordShellNodes();
+	}
 	writeFPMT();
 }
 
@@ -1180,7 +1182,6 @@ void IFCTranslator::writeFPMT()
 	for (auto itr : mNodeTable)
 		mFPMTWriter.addNode(itr.first, itr.second[0] / 1000.0, itr.second[1] / 1000.0, itr.second[2] / 1000.0);
 	int elemno = 1;
-	
 	for (auto storeyBeams : mBeams)
 		for (auto beam : storeyBeams.second)
 			mFPMTWriter.addBeamElem(elemno++, beam.mNodeNum1, beam.mNodeNum2, beam.mSectNum, beam.mMatNum);

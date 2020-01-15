@@ -18,6 +18,13 @@ struct Beam
 	std::vector<double> mNode2;
 };
 
+struct Node
+{
+	double x;
+	double y;
+	double z;
+};
+
 struct Wall
 {
 	int mSectNum;
@@ -89,6 +96,7 @@ protected:
 	void recordShell(std::vector<double> node1, std::vector<double> node2,std::vector<double> node3, int matno, int sectno);
 	void recordShellsByWalls();
 	void recordShellByWall(Wall wall);
+	void recordShellByTwoNodes(std::vector<double> node1, std::vector<double> node2,int matno,int sectno);
 	
 
 	void recordWall(std::vector<double> node1, std::vector<double> node2, /*std::vector<double> node3, std::vector<double> node4,*/ int matno, int sectno);

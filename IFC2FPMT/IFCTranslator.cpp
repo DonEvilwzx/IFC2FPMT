@@ -16,13 +16,40 @@ IFCTranslator::~IFCTranslator()
 {
 }
 
-std::vector<double> roundv(std::vector<double> v)
+//std::vector<double> roundv(std::vector<double> v)
+//{
+//	std::vector<double> rev;
+//	for (auto itr : v)
+//		rev.push_back(round(itr));
+//	return rev;
+//}
+
+bool equalNode3D(std::array<double,3> v1, std::array<double,3> v2,bool considerThick=false)
 {
-	std::vector<double> rev;
-	for (auto itr : v)
-		rev.push_back(round(itr));
-	return rev;
+	double tolerant;
+	if (considerThick)tolerant = ERRORTHICK;
+	else
+		tolerant = ERRORDOUBLE;
+	for (int i = 0; i < 3; i++)
+	{
+		if (abs(v1[i] - v2[i]) > tolerant)return false;
+	}
+	return true;
 }
+
+bool equalNode2D(std::array<double, 2> v1, std::array<double, 2> v2, bool considerThick = false)
+{
+	double tolerant;
+	if (considerThick)tolerant = ERRORTHICK;
+	else
+		tolerant = ERRORDOUBLE;
+	for (int i = 0; i < 2; i++)
+	{
+		if (abs(v1[i] - v2[i]) > tolerant)return false;
+	}
+	return true;
+}
+
 
 bool equalVectorDouble(std::vector<double> v1, std::vector<double> v2)
 {
@@ -35,7 +62,7 @@ bool equalVectorDouble(std::vector<double> v1, std::vector<double> v2)
 	return true;
 }
 
-vector<double> mynorm(vector<double> v)
+std::array<double,3> nodeNorm(std::array<double,3> v)
 {
 	double len = 0;
 	for (int i = 0; i < v.size(); i++)
@@ -44,26 +71,36 @@ vector<double> mynorm(vector<double> v)
 		v[i] = v[i] / len;
 	return v;
 }
+//vector<double> mynorm(vector<double> v)
+//{
+//	double len = 0;
+//	for (int i = 0; i < v.size(); i++)
+//		len += v[i] * v[i];
+//	for (int i = 0; i < v.size(); i++)
+//		v[i] = v[i] / len;
+//	return v;
+//}
 
-bool equalThick(std::vector<double> v1, std::vector<double> v2)
-{
-	int n = v2.size();
-	for (int i = 0; i < n; i++)
-	{
-		if (v1[i] - v2[i] > ERRORTHICK || v1[i] - v2[i] < -ERRORTHICK)return false;
-	}
-	return true;
-}
+//
+//bool equalThick(std::vector<double> v1, std::vector<double> v2)
+//{
+//	int n = v2.size();
+//	for (int i = 0; i < n; i++)
+//	{
+//		if (v1[i] - v2[i] > ERRORTHICK || v1[i] - v2[i] < -ERRORTHICK)return false;
+//	}
+//	return true;
+//}
 
-vector<double> vectorAdd(vector<double> v1, vector<double> v2)
-{
-	vector<double> v(v1.size());
-	for (int i = 0; i < v1.size(); i++)
-	{
-		v[i] = v1[i] + v2[i];
-	}
-	return v;
-}
+//vector<double> vectorAdd(vector<double> v1, vector<double> v2)
+//{
+//	vector<double> v(v1.size());
+//	for (int i = 0; i < v1.size(); i++)
+//	{
+//		v[i] = v1[i] + v2[i];
+//	}
+//	return v;
+//}
 
 
 vector<vector<double>> getDirectMatrixByVector(vector<double> v1, vector<double> v2)
@@ -79,61 +116,61 @@ vector<vector<double>> getDirectMatrixByVector(vector<double> v1, vector<double>
 	return rev;
 }
 
-vector<double> crossProduct(vector<double> v1, vector<double> v2)
+array<double,3> crossProduct(array<double, 3> v1, array<double, 3> v2)
 {
-	vector<double> rev(3);
+	array<double, 3> rev;
 	rev[0] = v1[1] * v2[2] - v1[2] * v2[1];
 	rev[1] = -v1[0] * v2[2] + v1[2] * v2[0];
 	rev[2] = v1[0] * v2[1] - v1[1] * v2[0];
 	return rev;
 }
 
-vector<double> vectorMulMatrix(vector<double> v, vector<vector<double>> m)
+//vector<double> vectorMulMatrix(vector<double> v, vector<vector<double>> m)
+//{
+//	vector<double> rev(3);
+//	for (int i = 0; i < 3; i++)
+//		for (int j = 0; j < 3; j++)
+//			rev[i] += v[j] * m[j][i];
+//	return rev;
+//}
+//
+//vector<double> MatrixMulVector(vector<double> v, vector<vector<double>> m)
+//{
+//	vector<double> rev(3);
+//	for (int i = 0; i < 3; i++)
+//		for (int j = 0; j < 3; j++)
+//			rev[i] += m[i][j] * v[j];
+//	return rev;
+//}
+//
+//bool unique(std::pair<double, double> p1, std::pair<double, double> p2)
+//{
+//	if (abs(p1.first - p2.first) < ERRORDOUBLE && abs(p1.second - p2.second) < ERRORDOUBLE)
+//		return true;
+//	else
+//		return false;
+//}
+
+//bool cmp(std::pair<double, double> p1, std::pair<double, double> p2)
+//{
+//	if (abs(p1.first - p2.first) < ERRORDOUBLE)
+//		return p1.second < p2.second;
+//
+//	return p1.first < p2.first;
+//}
+
+bool isPointSplitLine(array<double, 3> p1, array<double, 3> p2, array<double, 3> p)
 {
-	vector<double> rev(3);
-	for (int i = 0; i < 3; i++)
-		for (int j = 0; j < 3; j++)
-			rev[i] += v[j] * m[j][i];
-	return rev;
-}
-
-vector<double> MatrixMulVector(vector<double> v, vector<vector<double>> m)
-{
-	vector<double> rev(3);
-	for (int i = 0; i < 3; i++)
-		for (int j = 0; j < 3; j++)
-			rev[i] += m[i][j] * v[j];
-	return rev;
-}
-
-bool unique(std::pair<double, double> p1, std::pair<double, double> p2)
-{
-	if (abs(p1.first - p2.first) < ERRORDOUBLE && abs(p1.second - p2.second) < ERRORDOUBLE)
-		return true;
-	else
-		return false;
-}
-
-bool cmp(std::pair<double, double> p1, std::pair<double, double> p2)
-{
-	if (abs(p1.first - p2.first) < ERRORDOUBLE)
-		return p1.second < p2.second;
-
-	return p1.first < p2.first;
-}
-
-
-bool isPointSplitLine(vector<double> p1,vector<double> p2, vector<double> p)
-{
-	if ((p[0] - p1[0])*(p[0] - p2[0]) < ERRORDOUBLE && (p[1] - p1[1])*(p[1] - p2[1]) < ERRORDOUBLE&& !equalThick(p1, p) && !equalThick(p2, p))
+	if ((p[0] - p1[0])*(p[0] - p2[0]) < ERRORDOUBLE && (p[1] - p1[1])*(p[1] - p2[1]) < ERRORDOUBLE && !equalNode3D(p1, p, true) && !equalNode3D(p2, p, true))
 	{
-			return true;
+		return true;
 	}
 	return false;
 }
 
 
-vector<double> getParamByline(double x0,double y0,double x1,double y1)
+
+array<double,3> getParamByline(double x0,double y0,double x1,double y1)
 {
 	return
 	{
@@ -144,44 +181,43 @@ vector<double> getParamByline(double x0,double y0,double x1,double y1)
 }
 
 //求两个梁的交点，若不存在，则返回空集
-std::vector<double> IFCTranslator::getBeamCrossPoint(Beam elem1, Beam elem2)
+bool IFCTranslator::getLineCrossPoint(std::array<double,3> l1n1, std::array<double,3> l1n2, std::array<double,3> l2n1, std::array<double,3> l2n2, std::array<double,3>& crossPoint)
 {
-	std::vector<double> e1n1 = elem1.mNode1;
-	std::vector<double> e1n2 = elem1.mNode2;
-	double x1 = e1n1[0],y1=e1n1[1], z1 = e1n1[2],x2=e1n2[0],y2=e1n2[1],z2=e1n2[2];
+	double x1 = l1n1[0],y1=l1n1[1], z1 = l1n1[2],x2=l1n2[0],y2=l1n2[1],z2=l1n2[2];
 	if (abs(z1-z2)>ERRORDOUBLE)return{};   //如果不是梁，返回空集{};
 	double z = z1;
-	std::vector<double> e2n1 = elem2.mNode1;
-	std::vector<double> e2n2 = elem2.mNode2;
-	double x3 = e2n1[0], y3 = e2n1[1],z3=e2n1[2], x4 = e2n2[0], y4 = e2n2[1],z4=e2n2[2];
+	double x3 = l2n1[0], y3 = l2n1[1],z3=l2n1[2], x4 = l2n2[0], y4 = l2n2[1],z4=l2n2[2];
 	if (abs(z3-z4)>ERRORDOUBLE)
 	{
-		return {};
+		return false;
 	}
 	else 
 	{
-		vector<double> param1 = getParamByline(x1, y1, x2, y2);
-		vector<double> param2 = getParamByline(x3, y3, x4, y4);
+		array<double,3> param1 = getParamByline(x1, y1, x2, y2);
+		array<double,3> param2 = getParamByline(x3, y3, x4, y4);
 		double a0 = param1[0], b0 = param1[1], c0 = param1[2];
 		double a1 = param2[0], b1 = param2[1], c1 = param2[2];
 		double D = a0 * b1 - a1 * b0;
 		if (abs(D-0) < ERRORDOUBLE)
-			return {};
+			return false;
 		else
 		{
 			double x = (b0*c1 - b1 * c0) / D, y = (a1*c0 - a0 * c1) / D;
-			if (isPointSplitLine({ x1,y1 }, { x2,y2 },{ x,y }) || equalThick({ x,y }, { x1,y1 }) || equalThick({ x,y }, { x2,y2 }))
+			if (isPointSplitLine({ x1,y1,z }, { x2,y2,z },{ x,y,z }) || equalNode2D({ x,y }, { x1,y1 },true) || equalNode2D({ x,y }, { x2,y2 },true))
 			{
-				if (isPointSplitLine({ x3,y3 }, { x4,y4 }, { x,y }) || equalThick({ x,y }, { x3,y3 }) || equalThick({ x,y }, { x4,y4 }))
+				if (isPointSplitLine({ x3,y3,z}, { x4,y4,z}, { x,y,z}) || equalNode2D({ x,y }, { x3,y3 },true) || equalNode2D({ x,y }, { x4,y4 },true))
 				{
-					return { x,y,z };
+					crossPoint[0] = x;
+					crossPoint[1] = y;
+					crossPoint[2] = z;
+					return true;
 				}
 				
 			}
 			
 		}
 	}
-	return {};
+	return false;
 }
 
 void IFCTranslator::test1()
@@ -192,10 +228,10 @@ void IFCTranslator::test1()
 	//2_3版本
 	//CString m_path = _T("10层框架.ifc");
 	//CString m_path = _T("安中大楼.ifc");
-	//CString m_path = _T("教学楼项目.ifc");
+	CString m_path = _T("教学楼项目.ifc");
 	//CString m_path = _T("15#梁柱.0001.ifc");
 	//CString m_path = _T("公益小桥.ifc");
-	CString m_path = _T("小高层商住楼.0001.ifc");
+	//CString m_path = _T("小高层商住楼.0001.ifc");
 	//CString m_path = _T("03IDC.ifc");
 	//CString m_path = _T("别墅项目.ifc");
 	//4_2版本
@@ -210,8 +246,8 @@ void IFCTranslator::test1()
 	//CString m_path = _T("Wall.ifc");
 	
 	
-	//translateNewVersion(m_path, ifcSchemaName, FrameWork);
-	translateNewVersion(m_path, ifcSchemaName,ShearWall);
+	translateNewVersion(m_path, ifcSchemaName, FrameWork);
+	//translateNewVersion(m_path, ifcSchemaName,ShearWall);
 }
 
 int IFCTranslator::recordMatTable(std::wstring matname)
@@ -228,11 +264,11 @@ int IFCTranslator::recordMatTable(std::wstring matname)
 	return matno;
 }
 
-bool IFCTranslator::findNodeTable(std::vector<double> vnode)
+bool IFCTranslator::findNodeTable(std::array<double,3> vnode)
 {
 	for (auto node : mNodeTable)
 	{
-		if (equalVectorDouble(node.second, vnode))
+		if (equalNode3D(node.second, vnode))
 		{
 			return true;
 		}
@@ -240,29 +276,17 @@ bool IFCTranslator::findNodeTable(std::vector<double> vnode)
 	return false;
 } 
 
-int IFCTranslator::recordNodeTable(std::vector<double> vnode,bool isConsiderThick)
+int IFCTranslator::recordNodeTable(std::array<double,3> vnode,bool isConsiderThick)
 {
 	int nodeno;
 	bool isFind = false;
 	for (auto node : mNodeTable)
 	{
-		if (!isConsiderThick)
+		if (equalNode3D(node.second, vnode,isConsiderThick))
 		{
-			if (equalVectorDouble(node.second, vnode))
-			{
-				isFind = true;
-				nodeno = node.first;
-				break;
-			}
-		}
-		else
-		{
-			if (equalThick(node.second, vnode))
-			{
-				isFind = true;
-				nodeno = node.first;
-				break;
-			}
+			isFind = true;
+			nodeno = node.first;
+			break;
 		}
 	}
 	if (!isFind)
@@ -353,7 +377,7 @@ void IFCTranslator::recordSolidElement(int n1, int n2, int n3, int n4, int matno
 //	mBeams[mStoreyNum].push_back(elem);
 //}
 
-void IFCTranslator::recordWall(std::vector<double> node1, std::vector<double> node2,/* std::vector<double> node3, std::vector<double> node4,*/ int matno, int sectno)
+void IFCTranslator::recordWall(std::array<double,3> node1, std::array<double,3> node2,/* std::array<double,3> node3, std::array<double,3> node4,*/ int matno, int sectno)
 {
 	Wall wall;
 	wall.mMatNum = matno;
@@ -366,8 +390,8 @@ void IFCTranslator::recordWall(std::vector<double> node1, std::vector<double> no
 }
 void IFCTranslator::recordWallByVector(Eigen::Vector4d node1, Eigen::Vector4d node2, /*Eigen::Vector4d node3, Eigen::Vector4d node4, */int matno, int sectno)
 {
-	vector<double> node11 = { node1(0),node1(1),node1(2) };
-	vector<double> node22 = { node2(0),node2(1),node2(2) };
+	std::array<double,3> node11 = { node1(0),node1(1),node1(2) };
+	std::array<double,3> node22 = { node2(0),node2(1),node2(2) };
 	//vector<double> node33 = { node3(0),node3(1),node3(2) };
 	//vector<double> node44 = { node4(0),node4(1),node4(2) };
 	recordWall(node11, node22,/* node33, node44,*/ matno, sectno);
@@ -454,7 +478,7 @@ void IFCTranslator::parseIFCCSGSOLID(const long long& itemInstance, int matno, E
 	sdaiGetAttrBN(positionInstance, "Location", sdaiINSTANCE, &locInstance);
 	long long* coordAggr;
 	sdaiGetAttrBN(locInstance, "Coordinates", sdaiAGGR, &coordAggr);
-	vector<double> localCoord = getCoordByCoordAggr(coordAggr);
+	std::array<double,3> localCoord = getCoordByCoordAggr(coordAggr);
 	//vector<double> coord = vectorAdd(relativeCoord, LocalCoord);
 	double x1 = localCoord[0];
 	double y1 = localCoord[1];
@@ -496,7 +520,7 @@ void IFCTranslator::parseCfsFaces(long long* cfsfacesAggr, int matno, Eigen::Mat
 	//六面体的处理
 	if (facecnt == 6)
 	{
-		set<vector<double>> points;
+		set<std::array<double,3>> points;
 		for (int i = 0; i < facecnt; i++)
 		{
 			long long faceInstance;
@@ -519,7 +543,7 @@ void IFCTranslator::parseCfsFaces(long long* cfsfacesAggr, int matno, Eigen::Mat
 					engiGetAggrElement(polygonAggr, i, sdaiINSTANCE, &polygonInstance);
 					long long* coordAggr;
 					sdaiGetAttrBN(polygonInstance, "Coordinates", sdaiAGGR, &coordAggr);
-					vector<double> localCoord = getCoordByCoordAggr(coordAggr);
+					std::array<double,3> localCoord = getCoordByCoordAggr(coordAggr);
 					points.insert(localCoord);
 				}
 			}
@@ -565,8 +589,8 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 	sdaiGetAttrBN(itemInstance, "Depth", sdaiREAL, &depth);
 	long long extrudedDirectInstance;
 	sdaiGetAttrBN(itemInstance, "ExtrudedDirection", sdaiINSTANCE, &extrudedDirectInstance);
-	vector<double> exdirect = getDirectByDirectInstance(extrudedDirectInstance);
-	exdirect = mynorm(exdirect);
+	std::array<double,3> exdirect = getDirectByDirectInstance(extrudedDirectInstance);
+	exdirect = nodeNorm(exdirect);
 	long long positionInstance;
 	sdaiGetAttrBN(itemInstance, "Position", sdaiINSTANCE, &positionInstance);
 	Matrix4d localT1 = getTMatrixByPositionInstance(positionInstance);
@@ -669,7 +693,7 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 	//}
 
 }
-void IFCTranslator::recordShell(std::vector<double> node1, std::vector<double> node2, std::vector<double> node3, int matno, int sectno)
+void IFCTranslator::recordShell(std::array<double,3> node1, std::array<double,3> node2, std::array<double,3> node3, int matno, int sectno)
 {
 	Shell shell;
 	shell.mNode1 = node1;
@@ -679,7 +703,7 @@ void IFCTranslator::recordShell(std::vector<double> node1, std::vector<double> n
 	shell.mSectNum = sectno;
 	mShells.push_back(shell);
 }
-void IFCTranslator::recordShellByTwoNodes(std::vector<double> node1, std::vector<double> node2,int matno,int sectno)
+void IFCTranslator::recordShellByTwoNodes(std::array<double,3> node1, std::array<double,3> node2,int matno,int sectno)
 {
 	recordShell(node1, { node1[0],node1[1],node2[2] }, { node2[0],node2[1],node1[2] },matno,sectno);
 	recordShell(node2, { node1[0],node1[1],node2[2] }, { node2[0],node2[1],node1[2] },matno,sectno);
@@ -687,8 +711,8 @@ void IFCTranslator::recordShellByTwoNodes(std::vector<double> node1, std::vector
 
 void IFCTranslator::recordShellByWall(Wall wall)
 {
-	vector<double> startnode = wall.mNode1;
-	vector<double> endnode = wall.mNode2;
+	std::array<double,3> startnode = wall.mNode1;
+	std::array<double,3> endnode = wall.mNode2;
 	double xleng = endnode[0] - startnode[0];
 	double yleng = endnode[1] - startnode[1];
 	double zleng = endnode[2] - startnode[2];
@@ -721,7 +745,7 @@ Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement2D(const long long& 
 	{
 		long long* loccoordAggr = nullptr;
 		sdaiGetAttrBN(locInstance, "Coordinates", sdaiAGGR, &loccoordAggr);
-		vector<double> pan = getCoordByCoordAggr(loccoordAggr);
+		std::array<double,3> pan = getCoordByCoordAggr(loccoordAggr);
 		for (int i = 0; i < sdaiGetMemberCount(loccoordAggr); i++)
 			T(i, 3) = pan[i];
 	}
@@ -751,11 +775,11 @@ void IFCTranslator::parseIFCMAPPEDITEM(const long long& itemInstance, int matno,
 	Matrix4d D = Matrix4d::Identity();
 	Matrix4d R = Matrix4d::Identity();
 	Matrix4d S = Matrix4d::Identity();
-	vector<double> pan = { 0,0,0 };
-	vector<double> xdim = { 1,0,0 };
-	vector<double> ydim = { 0,1,0 };
-	vector<double> zdim = { 0,0,1 };
-	vector<double> scale = { 1,1,1 };
+	std::array<double,3> pan = { 0,0,0 };
+	std::array<double,3> xdim = { 1,0,0 };
+	std::array<double,3> ydim = { 0,1,0 };
+	std::array<double,3> zdim = { 0,0,1 };
+	std::array<double,3> scale = { 1,1,1 };
 	long long mappingTargetInstance;
 	sdaiGetAttrBN(itemInstance, "MappingTarget", sdaiINSTANCE, &mappingTargetInstance);
 	long long localOriginInstance;
@@ -774,19 +798,19 @@ void IFCTranslator::parseIFCMAPPEDITEM(const long long& itemInstance, int matno,
 	{
 		long long* xdimAggr = nullptr;
 		sdaiGetAttrBN(axis1Instance, "DirectionRatios", sdaiAGGR, &xdimAggr);
-		xdim = mynorm(getCoordByCoordAggr(xdimAggr));
+		xdim = nodeNorm(getCoordByCoordAggr(xdimAggr));
 	}
 	if (axis2Instance > 0)
 	{
 		long long* ydimAggr = nullptr;
 		sdaiGetAttrBN(axis2Instance, "DirectionRatios", sdaiAGGR, &ydimAggr);
-		ydim = mynorm(getCoordByCoordAggr(ydimAggr));
+		ydim = nodeNorm(getCoordByCoordAggr(ydimAggr));
 	}
 	if (axis3Instance > 0)
 	{
 		long long* zdimAggr = nullptr;
 		sdaiGetAttrBN(axis3Instance, "DirectionRatios", sdaiAGGR, &zdimAggr);
-		zdim = mynorm(getCoordByCoordAggr(zdimAggr));
+		zdim = nodeNorm(getCoordByCoordAggr(zdimAggr));
 	}
 	for (int i = 0; i < 3; i++)
 	{
@@ -855,14 +879,15 @@ void IFCTranslator::splitBeams()
 		int storeyBeamCnt = mBeams[i].size();
 		while(j<storeyBeamCnt)
 		{
-			if (equalThick(mBeams[i][j].mNode1, mBeams[i][j].mNode2))continue;
+			if (equalNode3D(mBeams[i][j].mNode1, mBeams[i][j].mNode2,true))
+				continue;
 			int tempStoreyBeamCnt = storeyBeamCnt;
 			for (int k=0;k<tempStoreyBeamCnt;k++)
 			{
-				vector<double> crossPoint = getBeamCrossPoint(mBeams[i][j], mBeams[i][k]);
-				if (crossPoint.size() > 0)
+				array<double, 3> crossPoint;
+				if (getLineCrossPoint(mBeams[i][j].mNode1, mBeams[i][j].mNode2, mBeams[i][k].mNode1, mBeams[i][k].mNode2,crossPoint))
 				{
-					if (equalVectorDouble(crossPoint, mBeams[i][j].mNode1) || equalVectorDouble(crossPoint, mBeams[i][j].mNode2))
+					if (equalNode3D(crossPoint, mBeams[i][j].mNode1) || equalNode3D(crossPoint, mBeams[i][j].mNode2))
 						continue;
 					if (isPointSplitLine(mBeams[i][j].mNode1, mBeams[i][j].mNode2,crossPoint))
 					{
@@ -875,11 +900,11 @@ void IFCTranslator::splitBeams()
 						mBeams[i][j].mNode2 = crossPoint;
 						++storeyBeamCnt;
 					}
-					else if (equalThick(crossPoint, mBeams[i][j].mNode1))
+					else if (equalNode3D(crossPoint, mBeams[i][j].mNode1,true))
 					{
 						mBeams[i][j].mNode1 = crossPoint;
 					}
-					else if (equalThick(crossPoint, mBeams[i][j].mNode2))
+					else if (equalNode3D(crossPoint, mBeams[i][j].mNode2,true))
 					{
 						mBeams[i][j].mNode2 = crossPoint;
 					}
@@ -934,7 +959,7 @@ void IFCTranslator::parseElement(const long long& instance, Eigen::Matrix4d rela
 	}
 }
 
-std::vector<double> IFCTranslator::getCoordByCoordAggr(long long*  coordAggr)
+std::array<double,3> IFCTranslator::getCoordByCoordAggr(long long*  coordAggr)
 {
 	double x0 = 0, y0 = 0, z0 = 0;
 	int cnt = sdaiGetMemberCount(coordAggr);
@@ -949,7 +974,7 @@ std::vector<double> IFCTranslator::getCoordByCoordAggr(long long*  coordAggr)
 }
 
 
-std::vector<double> IFCTranslator::getDirectByDirectInstance(const long long& directInstance)
+std::array<double,3> IFCTranslator::getDirectByDirectInstance(const long long& directInstance)
 {
 	double x, y, z;
 	long long* drAggr;
@@ -1041,14 +1066,14 @@ Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement3D(const long long& 
 	{
 		long long* loccoordAggr = nullptr;
 		sdaiGetAttrBN(locInstance, "Coordinates", sdaiAGGR, &loccoordAggr);
-		vector<double> pan = getCoordByCoordAggr(loccoordAggr);
+		array<double,3> pan = getCoordByCoordAggr(loccoordAggr);
 		for (int i = 0; i < 3; i++)
 			T(i, 3) = pan[i];
 	}
 	//获取z轴方向向量
 	long long axisInstance=0;
 	sdaiGetAttrBN(instance, "Axis", sdaiINSTANCE, &axisInstance);
-	vector<double> zdim = { 0,0,1 };
+	array<double,3> zdim = { 0,0,1 };
 	if (axisInstance > 0)
 	{
 		long long* zdimAggr = nullptr;
@@ -1058,14 +1083,14 @@ Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement3D(const long long& 
 	//获取x轴方向向量
 	long long refInstance=0;
 	sdaiGetAttrBN(instance, "RefDirection", sdaiINSTANCE, &refInstance);
-	vector<double> xdim = { 1,0,0 };
+	array<double, 3> xdim = { 1,0,0 };
 	if (refInstance > 0)
 	{
 		long long* xdimAggr = nullptr;
 		sdaiGetAttrBN(refInstance, "DirectionRatios", sdaiAGGR, &xdimAggr);
 		xdim = getCoordByCoordAggr(xdimAggr);
 	}
-	vector<double> ydim = crossProduct(zdim, xdim);
+	array<double, 3> ydim = crossProduct(zdim, xdim);
 	for (int i = 0; i < 3; i++)
 	{
 		T(i, 0) = xdim[i];
@@ -1075,27 +1100,30 @@ Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement3D(const long long& 
 	return T;
 }
 
-std::vector<std::vector<double>> IFCTranslator::getWallCrossLine(Wall w1, Wall w2)
-{
-	if (w1.mNode1[2]<w2.mNode1[1] || w1.mNode2[1]>w2.mNode2[2])return{};
-	Beam b1;
-	b1.mNode1 = { w1.mNode1[0],w1.mNode1[1],0 };
-	b1.mNode2 = { w1.mNode2[0],w1.mNode2[1],0 };
-	Beam b2;
-	b2.mNode1 = { w2.mNode1[0],w2.mNode1[1],0 };
-	b2.mNode2 = { w2.mNode2[0],w2.mNode2[1],0 };
-	std::vector<double> crossPoint = getBeamCrossPoint(b1, b2);
-	if (crossPoint.size() == 0)
-		return {};
-	double x = crossPoint[0];
-	double y = crossPoint[1];
-	double z1 = max(w1.mNode1[2], w2.mNode1[2]);
-	double z2 = min(w1.mNode2[2], w2.mNode2[2]);
-	return { {x,y,z1},{x,y,z2} };
-}
+//std::vector<std::array<double,3>> IFCTranslator::getWallCrossLine(Wall w1, Wall w2)
+//{
+//	if (w1.mNode1[2]<w2.mNode1[1] || w1.mNode2[1]>w2.mNode2[2])return{};
+//	Beam b1;
+//	b1.mNode1 = { w1.mNode1[0],w1.mNode1[1],0 };
+//	b1.mNode2 = { w1.mNode2[0],w1.mNode2[1],0 };
+//	Beam b2;
+//	b2.mNode1 = { w2.mNode1[0],w2.mNode1[1],0 };
+//	b2.mNode2 = { w2.mNode2[0],w2.mNode2[1],0 };
+//	std::array<double, 3> crossPoint;
+//	if(!getLineCrossPoint(b1.mNode1, b1.mNode2, b2.mNode1, b2.mNode2,crossPoint))
+//		return 
+//	if (crossPoint.size() == 0)
+//		return {};
+//	double x = crossPoint[0];
+//	double y = crossPoint[1];
+//	double z1 = max(w1.mNode1[2], w2.mNode1[2]);
+//	double z2 = min(w1.mNode2[2], w2.mNode2[2]);
+//	return { {x,y,z1},{x,y,z2} };
+//}
 void IFCTranslator::splitWalls()
-{}
-std::vector<double> IFCTranslator::getCoordinate(const long long & instance)
+{
+}
+std::array<double,3> IFCTranslator::getCoordinate(const long long & instance)
 {
 	long long opInstance;
 	sdaiGetAttrBN(instance, "ObjectPlacement", sdaiINSTANCE, &opInstance);

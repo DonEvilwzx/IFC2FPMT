@@ -3,18 +3,12 @@
 #include<map>
 #include<set>
 #include<vector>
+#include<array>
 #include <list>
 #include<Eigen/Dense>
 #include<Eigen/Cholesky>
 
 enum  buildingType { FrameWork, ShearWall };
-struct Node
-{
-	double x;
-	double y;
-	double z;
-};
-
 
 struct Beam
 {
@@ -22,25 +16,25 @@ struct Beam
 	int mNodeNum2;
 	int mSectNum;
 	int mMatNum;
-	std::vector<double> mNode1;
-	std::vector<double> mNode2;
+	std::array<double,3> mNode1;
+	std::array<double,3> mNode2;
 };
 
 struct Wall
 {
 	int mSectNum;
 	int mMatNum;
-	std::vector<double> mNode1;
-	std::vector<double> mNode2;
-	//std::vector<double> mNode3;
-	//std::vector<double> mNode4;
+	std::array<double,3> mNode1;
+	std::array<double,3> mNode2;
+	//std::array<double,3> mNode3;
+	//std::array<double,3> mNode4;
 };
 
 struct Shell
 {
-	std::vector<double> mNode1;
-	std::vector<double> mNode2;
-	std::vector<double> mNode3;
+	std::array<double,3> mNode1;
+	std::array<double,3> mNode2;
+	std::array<double,3> mNode3;
 	int mNodeNum1;
 	int mNodeNum2;
 	int mNodeNum3;
@@ -89,20 +83,20 @@ protected:
 	void parseIFCMAPPEDITEM(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix, bool isWall);
 	int recordMatTable(std::wstring matname);
 	int recordSectTable(std::vector<double> vsect);
-	int recordNodeTable(std::vector<double> vnode,bool isConsiderThick=false);
-	bool findNodeTable(std::vector<double> vnode);
+	int recordNodeTable(std::array<double,3> vnode,bool isConsiderThick=false);
+	bool findNodeTable(std::array<double,3> vnode);
 	int recordNodeTableByVector(Eigen::Vector4d v);
 	//void recordBeam(int n1, int n2, int matno, int sectno);
 	void recordBeamByVector(Eigen::Vector4d node1, Eigen::Vector4d node2, int matno, int sectno);
-	void recordShell(std::vector<double> node1, std::vector<double> node2,std::vector<double> node3, int matno, int sectno);
+	void recordShell(std::array<double,3> node1, std::array<double,3> node2,std::array<double,3> node3, int matno, int sectno);
 	void recordShellsByWalls();
 	void recordShellByWall(Wall wall);
-	void recordShellByTwoNodes(std::vector<double> node1, std::vector<double> node2,int matno,int sectno);
+	void recordShellByTwoNodes(std::array<double,3> node1, std::array<double,3> node2,int matno,int sectno);
 	
 
-	void recordWall(std::vector<double> node1, std::vector<double> node2, /*std::vector<double> node3, std::vector<double> node4,*/ int matno, int sectno);
+	void recordWall(std::array<double,3> node1, std::array<double,3> node2, /*std::array<double,3> node3, std::array<double,3> node4,*/ int matno, int sectno);
 	void recordWallByVector(Eigen::Vector4d node1, Eigen::Vector4d node2,/* Eigen::Vector4d node3, Eigen::Vector4d node4,*/ int matno, int sectno);
-    std::vector<std::vector<double>> getWallCrossLine(Wall w1, Wall w2);
+    /*std::vector<std::array<double,3>> getWallCrossLine(Wall w1, Wall w2);*/
 	void splitWalls();
 	
 	void recordSolidElement(int n1, int n2, int n3, int n4, int matno);
@@ -115,15 +109,15 @@ protected:
 	//int recordSectNameTable(std::wstring sectname);
 	std::vector<long long> getInstancesByAggr(long long* aggr);
 	std::vector<long long> getInstancesByInstance(long long instance, char* name);
-	std::vector<double> getCoordinate(const long long& instance);
+	std::array<double,3> getCoordinate(const long long& instance);
 	std::wstring getMatName(const long long& elemInstance);
-	std::vector<double> getCoordByCoordAggr(long long*  coordAggr);
-	std::vector<double> getDirectByDirectInstance(const long long& directInstance);
+	std::array<double,3> getCoordByCoordAggr(long long*  coordAggr);
+	std::array<double, 3> getDirectByDirectInstance(const long long& directInstance);
 	Eigen::Matrix4d getTMatrixByInstance(const long long& instance);
 	Eigen::Matrix4d getTMatrixByIfcAxis2Placement3D(const long long& instance);
 	Eigen::Matrix4d getTMatrixByIfcAxis2Placement2D(const long long& instance);
 	Eigen::Matrix4d getTMatrixByPositionInstance(const long long& instance);
-	std::vector<double> getBeamCrossPoint(Beam beam1, Beam beam2);
+	bool getLineCrossPoint(std::array<double,3> l1n1,std::array<double,3> l1n2, std::array<double,3> l2n1,std::array<double,3> l2n2,std::array<double,3>& crossPoint);
 	void splitBeams();
 	//Êä³öFPMTÎÄ¼þ
 	void writeFPMT();
@@ -136,8 +130,8 @@ private:
 	std::map<std::vector<double>, int> mSectTable;
 	//std::map<std::wstring, int> mSectNameTable;
 	std::map<std::wstring, int> mMatTable;
-	//std::set<std::vector<double>> mCrossPoints;
-	std::map<int, std::vector<double>> mNodeTable;
+	//std::set<std::array<double,3>> mCrossPoints;
+	std::map<int, std::array<double,3>> mNodeTable;
 	//std::map<std::vector<int>, int> mNodeTable;
 	std::map<int, std::vector<Beam>> mBeams;
 	std::map<int, std::vector<Beam>> mColumns;

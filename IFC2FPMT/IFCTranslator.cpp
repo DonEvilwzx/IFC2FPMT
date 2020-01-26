@@ -11,7 +11,7 @@ using namespace std;
 using namespace Eigen;
 const double ERRORTHICK = 800;
 const double ERRORDOUBLE = 0.01;
-const int SPLITNUM = 1;
+const int SPLITNUM = 2;
 IFCTranslator::~IFCTranslator()
 {
 }
@@ -142,6 +142,7 @@ vector<double> getParamByline(double x0,double y0,double x1,double y1)
 	x0*y1 - x1 * y0
 	};
 }
+
 //求两个梁的交点，若不存在，则返回空集
 std::vector<double> IFCTranslator::getBeamCrossPoint(Beam elem1, Beam elem2)
 {
@@ -237,7 +238,7 @@ bool IFCTranslator::findNodeTable(std::vector<double> vnode)
 		}
 	}
 	return false;
-}
+} 
 
 int IFCTranslator::recordNodeTable(std::vector<double> vnode,bool isConsiderThick)
 {
@@ -762,7 +763,7 @@ void IFCTranslator::parseIFCMAPPEDITEM(const long long& itemInstance, int matno,
 	long long* coorAggr;
 	sdaiGetAttrBN(localOriginInstance, "Coordinates", sdaiAGGR, &coorAggr);
 	pan = getCoordByCoordAggr(coorAggr);
-	long long axis1Instance, axis2Instance, axis3Instance;
+	long long axis1Instance=0, axis2Instance=0, axis3Instance=0;
 	sdaiGetAttrBN(mappingTargetInstance, "Axis1", sdaiINSTANCE, &axis1Instance);
 	sdaiGetAttrBN(mappingTargetInstance, "Axis2", sdaiINSTANCE, &axis2Instance);
 	sdaiGetAttrBN(mappingTargetInstance, "Axis3", sdaiINSTANCE, &axis3Instance);
@@ -906,7 +907,7 @@ void IFCTranslator::parseBuildingStorey(const long long& instance, Eigen::Matrix
 			}
 			else if (mBuilidngType == ShearWall)
 			{
-				if (elemtype == "IFCWALL" || elemtype == "IFCWALLSTANDARDCASE" || elemtype == "IFCSLAB")
+				if (elemtype == "IFCWALL" || elemtype == "IFCWALLSTANDARDCASE" )
 				{
 					parseElement(instance, relativeTmatrix*localTmatrix, true);
 				}
@@ -1045,7 +1046,7 @@ Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement3D(const long long& 
 			T(i, 3) = pan[i];
 	}
 	//获取z轴方向向量
-	long long axisInstance;
+	long long axisInstance=0;
 	sdaiGetAttrBN(instance, "Axis", sdaiINSTANCE, &axisInstance);
 	vector<double> zdim = { 0,0,1 };
 	if (axisInstance > 0)
@@ -1055,7 +1056,7 @@ Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement3D(const long long& 
 		zdim = getCoordByCoordAggr(zdimAggr);
 	}
 	//获取x轴方向向量
-	long long refInstance;
+	long long refInstance=0;
 	sdaiGetAttrBN(instance, "RefDirection", sdaiINSTANCE, &refInstance);
 	vector<double> xdim = { 1,0,0 };
 	if (refInstance > 0)
@@ -1074,6 +1075,26 @@ Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement3D(const long long& 
 	return T;
 }
 
+std::vector<std::vector<double>> IFCTranslator::getWallCrossLine(Wall w1, Wall w2)
+{
+	if (w1.mNode1[2]<w2.mNode1[1] || w1.mNode2[1]>w2.mNode2[2])return{};
+	Beam b1;
+	b1.mNode1 = { w1.mNode1[0],w1.mNode1[1],0 };
+	b1.mNode2 = { w1.mNode2[0],w1.mNode2[1],0 };
+	Beam b2;
+	b2.mNode1 = { w2.mNode1[0],w2.mNode1[1],0 };
+	b2.mNode2 = { w2.mNode2[0],w2.mNode2[1],0 };
+	std::vector<double> crossPoint = getBeamCrossPoint(b1, b2);
+	if (crossPoint.size() == 0)
+		return {};
+	double x = crossPoint[0];
+	double y = crossPoint[1];
+	double z1 = max(w1.mNode1[2], w2.mNode1[2]);
+	double z2 = min(w1.mNode2[2], w2.mNode2[2]);
+	return { {x,y,z1},{x,y,z2} };
+}
+void IFCTranslator::splitWalls()
+{}
 std::vector<double> IFCTranslator::getCoordinate(const long long & instance)
 {
 	long long opInstance;

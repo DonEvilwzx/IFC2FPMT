@@ -8,6 +8,14 @@
 #include<Eigen/Cholesky>
 
 enum  buildingType { FrameWork, ShearWall };
+struct Node
+{
+	double x;
+	double y;
+	double z;
+};
+
+
 struct Beam
 {
 	int mNodeNum1;
@@ -16,13 +24,6 @@ struct Beam
 	int mMatNum;
 	std::vector<double> mNode1;
 	std::vector<double> mNode2;
-};
-
-struct Node
-{
-	double x;
-	double y;
-	double z;
 };
 
 struct Wall
@@ -101,6 +102,8 @@ protected:
 
 	void recordWall(std::vector<double> node1, std::vector<double> node2, /*std::vector<double> node3, std::vector<double> node4,*/ int matno, int sectno);
 	void recordWallByVector(Eigen::Vector4d node1, Eigen::Vector4d node2,/* Eigen::Vector4d node3, Eigen::Vector4d node4,*/ int matno, int sectno);
+    std::vector<std::vector<double>> getWallCrossLine(Wall w1, Wall w2);
+	void splitWalls();
 	
 	void recordSolidElement(int n1, int n2, int n3, int n4, int matno);
 	void record5SolidElement(int no1, int no2, int no3, int no4, int no5, int no6, int no7, int no8, int matno);
@@ -110,7 +113,6 @@ protected:
 	
 	
 	//int recordSectNameTable(std::wstring sectname);
-
 	std::vector<long long> getInstancesByAggr(long long* aggr);
 	std::vector<long long> getInstancesByInstance(long long instance, char* name);
 	std::vector<double> getCoordinate(const long long& instance);
@@ -121,9 +123,7 @@ protected:
 	Eigen::Matrix4d getTMatrixByIfcAxis2Placement3D(const long long& instance);
 	Eigen::Matrix4d getTMatrixByIfcAxis2Placement2D(const long long& instance);
 	Eigen::Matrix4d getTMatrixByPositionInstance(const long long& instance);
-	
 	std::vector<double> getBeamCrossPoint(Beam beam1, Beam beam2);
-	
 	void splitBeams();
 	//Êä³öFPMTÎÄ¼þ
 	void writeFPMT();
@@ -138,6 +138,7 @@ private:
 	std::map<std::wstring, int> mMatTable;
 	//std::set<std::vector<double>> mCrossPoints;
 	std::map<int, std::vector<double>> mNodeTable;
+	//std::map<std::vector<int>, int> mNodeTable;
 	std::map<int, std::vector<Beam>> mBeams;
 	std::map<int, std::vector<Beam>> mColumns;
 	std::vector<Wall> mWalls;

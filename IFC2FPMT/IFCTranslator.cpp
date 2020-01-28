@@ -11,7 +11,7 @@ using namespace std;
 using namespace Eigen;
 const double ERRORTHICK = 800;
 const double ERRORDOUBLE = 0.01;
-const int SPLITNUM = 2;
+const int SPLITNUM = 1;
 IFCTranslator::~IFCTranslator()
 {
 }
@@ -246,8 +246,8 @@ void IFCTranslator::test1()
 	//CString m_path = _T("Wall.ifc");
 	
 	
-	translateNewVersion(m_path, ifcSchemaName, FrameWork);
-	//translateNewVersion(m_path, ifcSchemaName,ShearWall);
+	//translateNewVersion(m_path, ifcSchemaName, FrameWork);
+	translateNewVersion(m_path, ifcSchemaName,ShearWall);
 }
 
 int IFCTranslator::recordMatTable(std::wstring matname)
@@ -1100,28 +1100,88 @@ Eigen::Matrix4d IFCTranslator::getTMatrixByIfcAxis2Placement3D(const long long& 
 	return T;
 }
 
-//std::vector<std::array<double,3>> IFCTranslator::getWallCrossLine(Wall w1, Wall w2)
-//{
-//	if (w1.mNode1[2]<w2.mNode1[1] || w1.mNode2[1]>w2.mNode2[2])return{};
-//	Beam b1;
-//	b1.mNode1 = { w1.mNode1[0],w1.mNode1[1],0 };
-//	b1.mNode2 = { w1.mNode2[0],w1.mNode2[1],0 };
-//	Beam b2;
-//	b2.mNode1 = { w2.mNode1[0],w2.mNode1[1],0 };
-//	b2.mNode2 = { w2.mNode2[0],w2.mNode2[1],0 };
-//	std::array<double, 3> crossPoint;
-//	if(!getLineCrossPoint(b1.mNode1, b1.mNode2, b2.mNode1, b2.mNode2,crossPoint))
-//		return 
-//	if (crossPoint.size() == 0)
-//		return {};
-//	double x = crossPoint[0];
-//	double y = crossPoint[1];
-//	double z1 = max(w1.mNode1[2], w2.mNode1[2]);
-//	double z2 = min(w1.mNode2[2], w2.mNode2[2]);
-//	return { {x,y,z1},{x,y,z2} };
-//}
+bool IFCTranslator::getWallCrossLine(Wall w1, Wall w2, std::pair<std::array<double, 3>, std::array<double, 3>>& line)
+{
+	if (equalNode3D(w1.mNode1, w2.mNode1) && equalNode3D(w1.mNode2, w2.mNode2))return false;
+	if (w1.mNode2[2]<w2.mNode1[2] || w1.mNode1[2]>w2.mNode2[2])return false;
+	Beam b1;
+	b1.mNode1 = { w1.mNode1[0],w1.mNode1[1],0 };
+	b1.mNode2 = { w1.mNode2[0],w1.mNode2[1],0 };
+	Beam b2;
+	b2.mNode1 = { w2.mNode1[0],w2.mNode1[1],0 };
+	b2.mNode2 = { w2.mNode2[0],w2.mNode2[1],0 };
+	std::array<double, 3> crossPoint;
+	if (!getLineCrossPoint(b1.mNode1, b1.mNode2, b2.mNode1, b2.mNode2, crossPoint))
+		return false;
+	double x = crossPoint[0];
+	double y = crossPoint[1];
+	double z1 = max(w1.mNode1[2], w2.mNode1[2]);
+	double z2 = min(w1.mNode2[2], w2.mNode2[2]);
+	if (abs(z1 - z2) < ERRORTHICK)return false;
+	line.first = { x,y,z1 };
+	line.second = { x,y,z2 };
+	return true;
+}
 void IFCTranslator::splitWalls()
 {
+	int i = 0;
+	int wallcnt = mWalls.size();
+	while (i <wallcnt)
+	{
+		int walltempcnt = wallcnt;
+		for(int j=0;j<walltempcnt;j++)
+		{
+			pair<std::array<double, 3>, std::array<double, 3>> line;
+			if (getWallCrossLine(mWalls[i], mWalls[j],line))
+			{
+				array<double, 3> node1 = mWalls[i].mNode1;
+				array<double, 3> node2 = mWalls[i].mNode2;
+				array<double, 3> crossnode1 = line.first;
+				array<double, 3> crossnode2 = line.second;
+				double wz1 = mWalls[i].mNode1[2];
+				double wz2 = mWalls[i].mNode2[2];
+				double crossz1 = crossnode1[2];
+				double crossz2 = crossnode2[2];
+				array<double, 2> wxy1 = { mWalls[i].mNode1[0],mWalls[i].mNode1[1] };
+				array<double, 2> wxy2 = { mWalls[i].mNode2[0],mWalls[i].mNode2[1] };
+				array<double, 2> crossxy = { crossnode1[0],crossnode1[1] };
+				if (equalNode2D(wxy1, crossxy) || equalNode2D(wxy2, crossxy))continue;
+				if (equalNode2D(wxy1, crossxy, true))wxy1 = crossxy;
+				if (equalNode2D(wxy2, crossxy, true))wxy2 = crossxy;
+				vector<array<double, 2>> vxy = { wxy1,wxy2 };
+				if (!equalNode2D(crossxy, wxy1, true) && !equalNode2D(crossxy, wxy2, true))
+				{
+					vxy.insert(vxy.begin()+1,crossxy);
+				}
+				if (abs(crossz1 - wz1) < ERRORTHICK)wz1 = crossz1;
+				if (abs(crossz2 - wz2) < ERRORTHICK)wz2 = crossz2;
+				vector<double> vz = { wz1,wz2 };
+				if (abs(crossz1 - wz1) > ERRORTHICK)vz.push_back(crossz1);
+				if (abs(crossz2 - wz2) > ERRORTHICK)vz.push_back(crossz2);
+				sort(vz.begin(), vz.end());
+				for(int ixy=0;ixy<vxy.size()-1;ixy++)
+					for (int iz = 0; iz < vz.size()-1; iz++)
+					{
+						if (ixy == 0 && iz == 0)
+						{
+							mWalls[i].mNode1 = { vxy[ixy][0],vxy[ixy][1],vz[iz] };
+							mWalls[i].mNode2 = { vxy[ixy + 1][0],vxy[ixy + 1][1],vz[iz + 1] };
+						}
+						else
+						{
+							Wall neww;
+							neww.mNode1 = { vxy[ixy][0],vxy[ixy][1],vz[iz] };
+							neww.mNode2 = { vxy[ixy + 1][0],vxy[ixy + 1][1],vz[iz + 1] };
+							neww.mMatNum = mWalls[i].mMatNum;
+							neww.mSectNum = mWalls[i].mSectNum;
+							mWalls.push_back(neww);
+							++wallcnt;
+						}
+					}
+			}
+		}
+		i++;
+	}
 }
 std::array<double,3> IFCTranslator::getCoordinate(const long long & instance)
 {
@@ -1172,6 +1232,7 @@ void IFCTranslator::translateNewVersion(CString ifcFileName, std::basic_string<w
 	}
 	else if (mBuilidngType == ShearWall)
 	{
+		splitWalls();
 		recordShellsByWalls();
 		recordShellNodes();
 	}

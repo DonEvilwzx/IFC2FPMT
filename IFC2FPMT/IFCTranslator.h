@@ -96,9 +96,8 @@ protected:
 
 	void recordWall(std::array<double,3> node1, std::array<double,3> node2, /*std::array<double,3> node3, std::array<double,3> node4,*/ int matno, int sectno);
 	void recordWallByVector(Eigen::Vector4d node1, Eigen::Vector4d node2,/* Eigen::Vector4d node3, Eigen::Vector4d node4,*/ int matno, int sectno);
-    /*std::vector<std::array<double,3>> getWallCrossLine(Wall w1, Wall w2);*/
+    bool getWallCrossLine(Wall w1, Wall w2, std::pair<std::array<double, 3>, std::array<double, 3>>& line);
 	void splitWalls();
-	
 	void recordSolidElement(int n1, int n2, int n3, int n4, int matno);
 	void record5SolidElement(int no1, int no2, int no3, int no4, int no5, int no6, int no7, int no8, int matno);
 	void recordBeamNodes();

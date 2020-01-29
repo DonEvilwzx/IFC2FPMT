@@ -228,10 +228,10 @@ void IFCTranslator::test1()
 	//2_3版本
 	//CString m_path = _T("10层框架.ifc");
 	//CString m_path = _T("安中大楼.ifc");
-	CString m_path = _T("教学楼项目.ifc");
+	//CString m_path = _T("教学楼项目.ifc");
 	//CString m_path = _T("15#梁柱.0001.ifc");
 	//CString m_path = _T("公益小桥.ifc");
-	//CString m_path = _T("小高层商住楼.0001.ifc");
+	CString m_path = _T("小高层商住楼.0001.ifc");
 	//CString m_path = _T("03IDC.ifc");
 	//CString m_path = _T("别墅项目.ifc");
 	//4_2版本
@@ -1148,6 +1148,7 @@ void IFCTranslator::splitWalls()
 				if (equalNode2D(wxy1, crossxy) || equalNode2D(wxy2, crossxy))continue;
 				if (equalNode2D(wxy1, crossxy, true))wxy1 = crossxy;
 				if (equalNode2D(wxy2, crossxy, true))wxy2 = crossxy;
+				if (wxy1 == wxy2)continue;
 				vector<array<double, 2>> vxy = { wxy1,wxy2 };
 				if (!equalNode2D(crossxy, wxy1, true) && !equalNode2D(crossxy, wxy2, true))
 				{
@@ -1156,6 +1157,7 @@ void IFCTranslator::splitWalls()
 				if (abs(crossz1 - wz1) < ERRORTHICK)wz1 = crossz1;
 				if (abs(crossz2 - wz2) < ERRORTHICK)wz2 = crossz2;
 				vector<double> vz = { wz1,wz2 };
+				if (wz1 == wz2)continue;
 				if (abs(crossz1 - wz1) > ERRORTHICK)vz.push_back(crossz1);
 				if (abs(crossz2 - wz2) > ERRORTHICK)vz.push_back(crossz2);
 				sort(vz.begin(), vz.end());

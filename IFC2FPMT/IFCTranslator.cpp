@@ -226,12 +226,12 @@ void IFCTranslator::test1()
 	std::basic_string<wchar_t> ifcSchemaName = L"IFC2X3_TC1.exp";
 	//std::basic_string<wchar_t> ifcSchemaName = L"IFC4_ADD2.exp";
 	//2_3版本
-	//CString m_path = _T("10层框架.ifc");
+	CString m_path = _T("1010网架.ifc");
 	//CString m_path = _T("安中大楼.ifc");
 	//CString m_path = _T("教学楼项目.ifc");
 	//CString m_path = _T("15#梁柱.0001.ifc");
 	//CString m_path = _T("公益小桥.ifc");
-	CString m_path = _T("小高层商住楼.0001.ifc");
+	//CString m_path = _T("小高层商住楼.0001.ifc");
 	//CString m_path = _T("03IDC.ifc");
 	//CString m_path = _T("别墅项目.ifc");
 	//4_2版本
@@ -245,9 +245,12 @@ void IFCTranslator::test1()
 	//CString m_path = _T("BeamStandard.ifc");
 	//CString m_path = _T("Wall.ifc");
 	
-	
+	//框架结构用FrameWork
 	//translateNewVersion(m_path, ifcSchemaName, FrameWork);
-	translateNewVersion(m_path, ifcSchemaName,ShearWall);
+	//网架用Truss
+	translateNewVersion(m_path, ifcSchemaName, Truss);
+	//剪力墙用ShearWall
+	//translateNewVersion(m_path, ifcSchemaName,ShearWall);
 }
 
 int IFCTranslator::recordMatTable(std::wstring matname)
@@ -302,20 +305,20 @@ int IFCTranslator::recordSectTable(std::vector<double> vsect)
 {
 	int sectno;
 	bool isFind = false;
-	for (auto sect : mSectTable)
+	for (auto sect : mSectTable_R)
 	{
-		if (equalVectorDouble(sect.first, vsect))
+		if (equalVectorDouble(sect.second, vsect))
 		{
 			isFind = true;
-			sectno = sect.second;
+			sectno = sect.first;
 			break;
 		}
 	}
 	if (!isFind)
 	{
-		int n = mSectTable.size();
+		int n = mSectTable_R.size();
 		sectno = n + 1;
-		mSectTable[vsect] = sectno;
+		mSectTable_R[sectno] = vsect;
 	}
 	return sectno;
 }
@@ -360,10 +363,16 @@ void IFCTranslator::recordSolidElement(int n1, int n2, int n3, int n4, int matno
 {
 	Solid elem;
 	elem.mMatNum = matno;
-	elem.mNode1 = n1;
-	elem.mNode2 = n2;
-	elem.mNode3 = n3;
-	elem.mNode4 = n4;
+	elem.mNodeNum1 = n1;
+	elem.mNodeNum2 = n2;
+	elem.mNodeNum3 = n3;
+	elem.mNodeNum4 = n4;
+	//mSolids.push_back(elem);
+	for (auto solid : mSolids)
+	{
+		if (solid == elem)
+			return;
+	}
 	mSolids.push_back(elem);
 }
 
@@ -403,10 +412,17 @@ void IFCTranslator::recordBeamByVector(Eigen::Vector4d node1, Eigen::Vector4d no
 	elem.mSectNum = sectno;
 	elem.mNode1 = {node1(0),node1(1),node1(2)};
 	elem.mNode2 = {node2(0),node2(1),node2(2)};
-	if (abs(node1(2) - node2(2)) < ERRORDOUBLE)
-		mBeams[mStoreyNum].push_back(elem);
+	if (mBuilidngType == FrameWork)
+	{
+		if (abs(node1(2) - node2(2)) < ERRORDOUBLE)
+			mBeams[mStoreyNum].push_back(elem);
+		else
+			mColumns[mStoreyNum].push_back(elem);
+	}
 	else
-		mColumns[mStoreyNum].push_back(elem);
+	{
+		mBeams[mStoreyNum].push_back(elem);
+	}
 }
 void IFCTranslator::record5SolidElement(int no1, int no2, int no3, int no4, int no5, int no6, int no7, int no8, int matno)
 {
@@ -417,8 +433,49 @@ void IFCTranslator::record5SolidElement(int no1, int no2, int no3, int no4, int 
 	recordSolidElement(no5, no7, no8, no3, matno);
 	recordSolidElement(no2, no3, no5, no8, matno);
 }
-
 void IFCTranslator::recordBeamNodes()
+{
+	if (mBuilidngType == FrameWork)
+	{
+		for (int i = 0; i < mStoreyNum; i++)
+			for (int j = 0; j < mBeams[i].size(); j++)
+			{
+				mBeams[i][j].mNodeNum1 = recordNodeTable(mBeams[i][j].mNode1);
+				mBeams[i][j].mNodeNum2 = recordNodeTable(mBeams[i][j].mNode2);
+			}
+		for (int i = 0; i < mStoreyNum; i++)
+			for (int j = 0; j < mColumns[i].size(); j++)
+			{
+				mColumns[i][j].mNodeNum1 = recordNodeTable(mColumns[i][j].mNode1);
+				mColumns[i][j].mNodeNum2 = recordNodeTable(mColumns[i][j].mNode2);
+				//if (i == 0 || i == 1)
+				//{
+				//	if (mNodeTable[mColumns[i][j].mNodeNum2][2] > mNodeTable[mColumns[i][j].mNodeNum1][2])
+				//	{
+				//		mNodeTable[mColumns[i][j].mNodeNum1][0] = mNodeTable[mColumns[i][j].mNodeNum2][0];
+				//		mNodeTable[mColumns[i][j].mNodeNum1][1] = mNodeTable[mColumns[i][j].mNodeNum2][1];
+				//	}
+				//	else
+				//	{
+				//		mNodeTable[mColumns[i][j].mNodeNum2][0] = mNodeTable[mColumns[i][j].mNodeNum1][0];
+				//		mNodeTable[mColumns[i][j].mNodeNum2][1] = mNodeTable[mColumns[i][j].mNodeNum1][1];
+				//	}
+				//	mColumns[i][j].mNode1 = mNodeTable[mColumns[i][j].mNodeNum1];
+				//	mColumns[i][j].mNode2 = mNodeTable[mColumns[i][j].mNodeNum2];
+				//}
+			}
+	}
+	else
+	{
+		for (int i = 0; i < mStoreyNum; i++)
+			for (int j = 0; j < mBeams[i].size(); j++)
+			{
+				mBeams[i][j].mNodeNum1 = recordNodeTable(mBeams[i][j].mNode1);
+				mBeams[i][j].mNodeNum2 = recordNodeTable(mBeams[i][j].mNode2);
+			}
+	}
+}
+void IFCTranslator::recordSplitBeamNodes()
 {
 	for(int i=0;i<mStoreyNum;i++)
 		for (int j=0;j<mBeams[i].size();j++)
@@ -463,7 +520,16 @@ void IFCTranslator::recordShellNodes()
 		mShells[i].mNodeNum3 = recordNodeTable(mShells[i].mNode3);
 	}
 }
-
+//void IFCTranslator::recordSolidNodes()
+//{
+//	for (int i = 0; i < mSolids.size(); i++)
+//	{
+//		mSolids[i].mNodeNum1 = recordNodeTable(mSolids[i].mNode1);
+//		mSolids[i].mNodeNum2 = recordNodeTable(mSolids[i].mNode2);
+//		mSolids[i].mNodeNum3 = recordNodeTable(mSolids[i].mNode3);
+//		mSolids[i].mNodeNum4 = recordNodeTable(mSolids[i].mNode4);
+//	}
+//}
 void IFCTranslator::parseIFCCSGSOLID(const long long& itemInstance, int matno, Eigen::Matrix4d relativeTmatrix)
 {
 	long long treeRootInstance;
@@ -679,18 +745,18 @@ void IFCTranslator::parseIFCEXTRUDEDAREASOLID(const long long& itemInstance, int
 	//	//	}
 	//	//}
 	//}
-	//else //其他截面暂作简单处理
-	//{
-	//	if (!isWall)
-	//	{
-	//		Vector4d worldNode1 = relativeTmatrix * localTmatrix*node1;
-	//		Vector4d worldNode2 = relativeTmatrix * localTmatrix*node2;
-	//		//int no1 = recordNodeTableByVector(worldNode1);
-	//		//int no2 = recordNodeTableByVector(worldNode2);
-	//		sectno = recordSectTable({ 1,800,800,0 });
-	//		recordBeamByVector(worldNode1, worldNode2, matno, sectno);
-	//	}
-	//}
+	else //其他截面暂作简单处理
+	{
+		if (!isWall)
+		{
+			Vector4d worldNode1 = relativeTmatrix * localTmatrix*node1;
+			Vector4d worldNode2 = relativeTmatrix * localTmatrix*node2;
+			//int no1 = recordNodeTableByVector(worldNode1);
+			//int no2 = recordNodeTableByVector(worldNode2);
+			sectno = recordSectTable({ 1,800,800,0 });
+			recordBeamByVector(worldNode1, worldNode2, matno, sectno);
+		}
+	}
 
 }
 void IFCTranslator::recordShell(std::array<double,3> node1, std::array<double,3> node2, std::array<double,3> node3, int matno, int sectno)
@@ -871,7 +937,7 @@ void IFCTranslator::parseItems(const long long& itemInstance, int matno, Eigen::
 	}
 }
 
-void IFCTranslator::splitBeams()
+void IFCTranslator::splitBeams(bool JXH)
 {
 	for (int i = 0; i <= mStoreyNum; i++)
 	{
@@ -908,6 +974,39 @@ void IFCTranslator::splitBeams()
 					{
 						mBeams[i][j].mNode2 = crossPoint;
 					}
+
+					if (JXH)
+					{
+						vector<double> sectj = mSectTable_R[mBeams[i][j].mSectNum];
+						vector<double> sectk= mSectTable_R[mBeams[i][k].mSectNum];
+						double x1, x2, y1, y2;
+						double z2 = max(mBeams[i][j].mNode1[2] + sectj[2] / 2, mBeams[i][k].mNode1[2] + sectj[2]/2 );
+						double z1=min(mBeams[i][j].mNode1[2] - sectk[2] / 2, mBeams[i][k].mNode1[2] - sectk[2]/2);
+						if (abs(mBeams[i][j].mNode1[0] - mBeams[i][j].mNode2[0]) < ERRORDOUBLE)  //j梁沿y轴
+						{
+							x1 = crossPoint[0] - sectj[1]/2 ;
+							x2 = crossPoint[0] + sectj[1]/2 ;
+							y1 = crossPoint[1] - sectk[1]/2 ;
+							y2 = crossPoint[1] + sectk[1]/2 ;
+						}
+						else
+						{
+							x1 = crossPoint[0] - sectk[1]/2 ;
+							x2 = crossPoint[0] + sectk[1]/2 ;
+							y1 = crossPoint[1] - sectj[1]/2 ;
+							y2 = crossPoint[1] + sectj[1]/2 ;
+						}
+						vector<int> v;
+						v.push_back(recordNodeTable({ x1,y1,z1 }));
+						v.push_back(recordNodeTable({ x2,y1,z1 }));
+						v.push_back(recordNodeTable({ x1,y2,z1 }));
+						v.push_back(recordNodeTable({ x2,y2,z1 }));
+						v.push_back(recordNodeTable({ x1,y1,z2 }));
+						v.push_back(recordNodeTable({ x2,y1,z2 }));
+						v.push_back(recordNodeTable({ x1,y2,z2 }));
+						v.push_back(recordNodeTable({ x2,y2,z2 }));
+						record5SolidElement(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], mBeams[i][j].mMatNum);
+					}
 				}
 			}
 			++j;
@@ -925,9 +1024,9 @@ void IFCTranslator::parseBuildingStorey(const long long& instance, Eigen::Matrix
 		for (auto instance : relatedInstances)
 		{
 			string elemtype = engiGetInstanceClassInfoUC(instance);
-			if (mBuilidngType == FrameWork)
+			if (mBuilidngType == FrameWork||mBuilidngType==Truss)
 			{
-				if (/*elemtype == "IFCBUILDINGELEMENTPROXY" ||*/ elemtype == "IFCCOLUMN" || elemtype == "IFCBEAMSTANDARDCASE" || elemtype == "IFCBEAM")
+				if (elemtype == "IFCBUILDINGELEMENTPROXY" || elemtype == "IFCCOLUMN" || elemtype == "IFCBEAMSTANDARDCASE" || elemtype == "IFCBEAM")
 					parseElement(instance, relativeTmatrix*localTmatrix, false);
 			}
 			else if (mBuilidngType == ShearWall)
@@ -1227,14 +1326,26 @@ void IFCTranslator::translateNewVersion(CString ifcFileName, std::basic_string<w
 		for (auto buildingInstance : buildingInstances)
 			parseBuilding(buildingInstance, Matrix4d::Identity());
 	}
+
+	//for (auto itr : mSectTable)
+	//	mSectTable_R[itr.second] = itr.first;
+
+	bool JXH =false;  //是否打开精细化
 	if (mBuilidngType == FrameWork)
 	{
-		splitBeams();
+		//splitBeams(JXH);					//非精细化分析
+		if(!JXH)
+			recordSplitBeamNodes();		//非精细化分析
+		else
+			recordBeamNodes();
+	}
+	else if (mBuilidngType == Truss)
+	{
 		recordBeamNodes();
 	}
 	else if (mBuilidngType == ShearWall)
 	{
-		splitWalls();
+		//splitWalls();
 		recordShellsByWalls();
 		recordShellNodes();
 	}
@@ -1271,20 +1382,20 @@ void IFCTranslator::writeFPMT()
 {
 	//建立新表，使键值为编号，属性值对应材料、截面、坐标参数，以使得编号值能够得到排序
 	//map<int, vector<double>> nodeTable;
-	map<int, vector<double>> sectTable;
+	//map<int, vector<double>> sectTable;
 	//map<int, std::wstring> sectTable;
 	map<int, wstring> matTable;
 	//for (auto itr : mNodeTable)
 	//	nodeTable[itr.second] = itr.first;
 	for (auto itr : mMatTable)
 		matTable[itr.second] = itr.first;
-	for (auto itr : mSectTable)
-		sectTable[itr.second] = itr.first;
+	//for (auto itr : mSectTable)
+	//	sectTable[itr.second] = itr.first;
 
 	for (auto itr : matTable)
 		mFPMTWriter.addLEMat(itr.first);
 
-	for (auto itr : sectTable)
+	for (auto itr : mSectTable_R)
 	{
 		if (abs(itr.second[0] - 1) < ERRORDOUBLE)
 			mFPMTWriter.addRectSect(itr.first, itr.second[1] / 1000.0, itr.second[2] / 1000.0, itr.second[3]);
@@ -1292,7 +1403,7 @@ void IFCTranslator::writeFPMT()
 			mFPMTWriter.addThickSect(itr.first, itr.second[1] / 1000.0);
 	}
 	for (auto itr : mNodeTable)
-		mFPMTWriter.addNode(itr.first, itr.second[0] / 1000.0, itr.second[1] / 1000.0, itr.second[2] / 1000.0);
+		mFPMTWriter.addNode(itr.first, itr.second[0] , itr.second[1] , itr.second[2] );
 	int elemno = 1;
 	for (auto storeyBeams : mBeams)
 		for (auto beam : storeyBeams.second)
@@ -1303,7 +1414,7 @@ void IFCTranslator::writeFPMT()
 			mFPMTWriter.addBeamElem(elemno++, column.mNodeNum1, column.mNodeNum2, column.mSectNum, column.mMatNum);
 	
 	for (auto itr : mSolids)
-		mFPMTWriter.addSolidElem(elemno++, itr.mNode1, itr.mNode2, itr.mNode3, itr.mNode4, itr.mMatNum);
+		mFPMTWriter.addSolidElem(elemno++, itr.mNodeNum1, itr.mNodeNum2, itr.mNodeNum3, itr.mNodeNum4, itr.mMatNum);
 
 	for (auto itr : mShells)
 		mFPMTWriter.addShellElem(elemno++, itr.mNodeNum1, itr.mNodeNum2, itr.mNodeNum3, itr.mSectNum, itr.mMatNum);

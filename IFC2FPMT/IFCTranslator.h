@@ -8,7 +8,7 @@
 #include<Eigen/Dense>
 #include<Eigen/Cholesky>
 
-enum  buildingType { FrameWork, ShearWall };
+
 
 struct Beam
 {
@@ -52,16 +52,25 @@ struct Truss
 
 struct Solid
 {
-	int mNode1;
-	int mNode2;
-	int mNode3;
-	int mNode4;
+	int mNodeNum1;
+	int mNodeNum2;
+	int mNodeNum3;
+	int mNodeNum4;
 	int mMatNum;
+	bool operator==(Solid solid)
+	{
+		if (solid.mMatNum == mMatNum && solid.mNodeNum1 == mNodeNum1 && solid.mNodeNum2 == mNodeNum2 && solid.mNodeNum3 == mNodeNum3 && solid.mNodeNum4 == mNodeNum4)
+		{
+			return true;
+		}
+		return false;
+	}
 };
 
 class IFCTranslator
 {
 public:
+	enum  buildingType { FrameWork, ShearWall, Truss };
 	IFCTranslator() {};
 	~IFCTranslator();
 	void setOutputpath(const CString& opath);
@@ -100,8 +109,10 @@ protected:
 	void splitWalls();
 	void recordSolidElement(int n1, int n2, int n3, int n4, int matno);
 	void record5SolidElement(int no1, int no2, int no3, int no4, int no5, int no6, int no7, int no8, int matno);
+	void recordSplitBeamNodes();
 	void recordBeamNodes();
 	void recordShellNodes();
+	void recordSolidNodes();
 	void resetMappedAttribute();
 	
 	
@@ -117,7 +128,7 @@ protected:
 	Eigen::Matrix4d getTMatrixByIfcAxis2Placement2D(const long long& instance);
 	Eigen::Matrix4d getTMatrixByPositionInstance(const long long& instance);
 	bool getLineCrossPoint(std::array<double,3> l1n1,std::array<double,3> l1n2, std::array<double,3> l2n1,std::array<double,3> l2n2,std::array<double,3>& crossPoint);
-	void splitBeams();
+	void splitBeams(bool JXH);
 	//Êä³öFPMTÎÄ¼þ
 	void writeFPMT();
 
@@ -127,6 +138,7 @@ private:
 	FpmtWriter mFPMTWriter;
 	wchar_t outputpath_[512];
 	std::map<std::vector<double>, int> mSectTable;
+	std::map<int,std::vector<double>> mSectTable_R;
 	//std::map<std::wstring, int> mSectNameTable;
 	std::map<std::wstring, int> mMatTable;
 	//std::set<std::array<double,3>> mCrossPoints;
